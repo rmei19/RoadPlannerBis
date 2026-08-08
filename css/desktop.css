@@ -1,0 +1,44 @@
+/* =========================================================================
+   RoadPlanner — desktop.css
+   Au-delà de 768px : barre latérale fixe à gauche, carte occupant le reste.
+   Le panneau mobile (coulissant) devient une sidebar statique.
+   ========================================================================= */
+
+@media (min-width: 768px) {
+
+  #map {
+    left: var(--panel-width-desktop);
+  }
+
+  .panel {
+    top: 0 !important;
+    left: 0;
+    bottom: 0;
+    width: var(--panel-width-desktop);
+    height: 100%;
+    border-radius: 0;
+    transform: none !important;
+    transition: none;
+    border-right: 1px solid var(--color-border);
+    touch-action: auto;
+  }
+
+  .panel-scroll { padding: 0 20px 32px; touch-action: auto; }
+
+  .panel-tabs { margin-top: 16px; }
+
+  /* FAB repositionnés à droite de la sidebar */
+  .fab-locate { right: 20px; bottom: 84px; }
+  .fab-layers { right: 20px; bottom: 136px; }
+  .fab-theme  { right: 20px; bottom: 188px; }
+
+  /* La sidebar desktop n'a pas besoin de la poignée tactile */
+  .panel-handle { display: none; }
+
+  /* Cartes de résultats un peu plus larges/aérées sur grand écran */
+  .route-stats-grid { grid-template-columns: repeat(3, 1fr); }
+}
+
+@media (min-width: 1200px) {
+  :root { --panel-width-desktop: 440px; }
+}

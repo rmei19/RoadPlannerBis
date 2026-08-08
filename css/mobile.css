@@ -1,0 +1,49 @@
+/* =========================================================================
+   RoadPlanner — mobile.css
+   Comportement "mobile first" : panneau coulissant en bas de l'écran,
+   manipulable au doigt, avec plusieurs positions d'ancrage (collapsed / half / full).
+   La carte reste toujours visible en dessous.
+
+   Positionnement en `top` (pourcentage), pas en `transform: translateY()` :
+   les pourcentages top/bottom d'un élément `position: fixed` se résolvent
+   toujours contre le viewport RÉELLEMENT visible, contrairement à l'unité
+   `vh` qui peut, sur certains navigateurs mobiles, se baser sur le viewport
+   maximal (barre d'adresse repliée) même quand celle-ci est affichée — ce
+   qui faisait passer la poignée sous la barre d'adresse et la rendait
+   impossible à attraper.
+   ========================================================================= */
+
+/* Boutons flottants positionnés au-dessus du panneau replié (état "half" par défaut) */
+.fab-locate { right: 12px; bottom: calc(48% + 16px + var(--safe-bottom)); }
+.fab-layers { right: 12px; bottom: calc(48% + 68px + var(--safe-bottom)); }
+.fab-theme  { right: 12px; bottom: calc(48% + 120px + var(--safe-bottom)); }
+
+.panel {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  border-radius: 20px 20px 0 0;
+  transition: top 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+  padding-bottom: var(--safe-bottom);
+  touch-action: none;
+}
+
+.panel.is-dragging { transition: none; }
+
+/* Etats d'ancrage : collapsed (poignée + onglets seulement), half (mi-hauteur), full (quasi plein écran)
+   Confinés au mobile (max-width) : une règle avec [data-state=...] a une
+   spécificité CSS plus élevée qu'un simple .panel, donc sans cette limite
+   elle gagnerait aussi sur desktop.css malgré l'ordre de chargement. */
+@media (max-width: 767px) {
+  .panel[data-state="collapsed"] { top: calc(100% - 108px); }
+  .panel[data-state="half"]      { top: 52%; }
+  .panel[data-state="full"]      { top: max(56px, calc(var(--safe-top) + 44px)); }
+}
+
+.panel-scroll { touch-action: pan-y; }
+
+@media (min-width: 768px) {
+  /* La sidebar prend le relais au-delà de 768px : voir desktop.css */
+  .panel-handle { display: none; }
+}

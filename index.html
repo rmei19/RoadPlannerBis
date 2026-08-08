@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<script>
+  // Applique le thème AVANT le premier rendu, pour éviter un flash sombre->clair.
+  (function () {
+    try {
+      var raw = localStorage.getItem('rp_theme');
+      var theme = raw ? JSON.parse(raw) : null;
+      if (theme !== 'light' && theme !== 'dark') {
+        theme = (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) ? 'light' : 'dark';
+      }
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch (e) { /* pas grave, thème sombre par défaut restera actif */ }
+  })();
+</script>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>RoadPlanner — Préparation de parcours vélo de route</title>
+<meta name="description" content="Préparez vos sorties vélo de route : recherche d'itinéraires, boucles, dénivelé, export GPX/TCX/FIT.">
+<meta name="theme-color" content="#14171A">
+
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+
+<!-- Leaflet -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+  integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+
+<!-- Polices : Barlow Condensed (chiffres/instruments) + Inter (UI) + JetBrains Mono (coordonnées) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="css/mobile.css">
+<link rel="stylesheet" href="css/desktop.css">
+</head>
+<body>
+
+<!-- Bandeau d'avertissement si la page est ouverte en file:// (tuiles/API bloquées) -->
+<div id="protocol-warning" class="protocol-warning" hidden>
+  <p><strong>Page ouverte en fichier local (file://).</strong> Les tuiles de carte et les API (Nominatim, OpenRouteService) seront bloquées. Servez le dossier via un serveur HTTP local, ex. <code>python3 -m http.server 8080</code>, puis ouvrez <code>http://localhost:8080</code>.</p>
+  <button id="btn-dismiss-warning" aria-label="Fermer">✕</button>
+</div>
+
+<!-- ===================== CARTE PLEIN ECRAN ===================== -->
+<div id="map"></div>
+
+<!-- Bouton localisation flottant -->
+<button id="btn-locate" class="fab fab-locate" title="Me localiser" aria-label="Me localiser">
+  <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 8a4 4 0 100 8 4 4 0 000-8zm9-1h-2.06A6.99 6.99 0 0013 1.06V-1h-2v2.06A6.99 6.99 0 005.06 7H3v2h2.06A6.99 6.99 0 0011 15.94V18h2v-2.06A6.99 6.99 0 0018.94 9H21V7zM12 15a3 3 0 110-6 3 3 0 010 6z"/></svg>
+</button>
+
+<!-- Bouton bascule couches (fond de carte) -->
+<button id="btn-layers" class="fab fab-layers" title="Fond de carte" aria-label="Changer le fond de carte">
+  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2 1 8l11 6 9-4.91V16h2V8L12 2zM3.5 13.09 12 18l8.5-4.91V16L12 20.5 3.5 16v-2.91z"/></svg>
+</button>
+
+<!-- Bouton bascule thème clair/sombre -->
+<button id="btn-theme" class="fab fab-theme" title="Basculer thème clair/sombre" aria-label="Basculer entre thème clair et sombre">
+  <svg id="icon-theme-dark" viewBox="0 0 24 24" width="19" height="19"><path fill="currentColor" d="M12 3a9 9 0 109 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 01-4.4 2.26 5.403 5.403 0 01-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
+  <svg id="icon-theme-light" viewBox="0 0 24 24" width="19" height="19" hidden><path fill="currentColor" d="M12 7a5 5 0 100 10 5 5 0 000-10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
+</button>
+
+<!-- ===================== BARRE LATERALE DESKTOP / PANNEAU COULISSANT MOBILE ===================== -->
+<div id="panel" class="panel" data-state="half">
+
+  <!-- Poignée de glissement (mobile uniquement) -->
+  <div id="panel-handle" class="panel-handle" aria-label="Glisser pour agrandir ou réduire">
+    <span class="handle-bar"></span>
+  </div>
+
+  <div class="panel-scroll">
+
+    <!-- ---- Onglets de navigation du panneau ---- -->
+    <nav class="panel-tabs" role="tablist">
+      <button class="tab-btn is-active" data-tab="search" role="tab" aria-selected="true">Rechercher</button>
+      <button class="tab-btn" data-tab="criteria" role="tab" aria-selected="false">Critères</button>
+      <button class="tab-btn" data-tab="results" role="tab" aria-selected="false">Parcours</button>
+    </nav>
+
+    <!-- ================= ONGLET RECHERCHE ================= -->
+    <section class="tab-panel is-active" id="tab-search">
+
+      <div class="field-group">
+        <label class="field-label" for="input-start">Départ</label>
+        <div class="search-row">
+          <input type="text" id="input-start" class="text-input" placeholder="Adresse, ville, col, lieu-dit, coordonnées GPS…" autocomplete="off">
+          <button class="icon-btn btn-clear-field" id="btn-clear-start" type="button" title="Effacer" aria-label="Effacer le départ" hidden>
+            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M18.3 5.71L12 12.01l-6.3-6.3-1.4 1.4 6.3 6.3-6.3 6.29 1.4 1.4 6.3-6.29 6.3 6.29 1.4-1.4-6.3-6.29 6.3-6.3z"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-pick-start" title="Choisir sur la carte" aria-label="Choisir le départ sur la carte">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 2C7.6 2 4 5.6 4 10c0 5.4 7 11.4 7.3 11.6a1 1 0 0 0 1.4 0C13 21.4 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>
+          </button>
+        </div>
+        <ul class="suggestions" id="suggestions-start" hidden></ul>
+      </div>
+
+      <div class="field-group" id="waypoints-container">
+        <label class="field-label">Points de passage (optionnel)</label>
+        <ul class="waypoints-list" id="waypoints-list"></ul>
+        <div class="search-row">
+          <input type="text" id="input-waypoint" class="text-input" placeholder="Adresse, ville, col, lieu-dit…" autocomplete="off">
+        </div>
+        <ul class="suggestions" id="suggestions-waypoint" hidden></ul>
+        <button class="btn-ghost btn-add-waypoint" id="btn-add-waypoint" type="button">+ Ajouter en pointant sur la carte</button>
+      </div>
+
+      <div class="field-group" id="end-field-group">
+        <label class="field-label" for="input-end">Arrivée</label>
+        <div class="search-row">
+          <input type="text" id="input-end" class="text-input" placeholder="Adresse, ville, col, lieu-dit, coordonnées GPS…" autocomplete="off">
+          <button class="icon-btn btn-clear-field" id="btn-clear-end" type="button" title="Effacer" aria-label="Effacer l'arrivée" hidden>
+            <svg viewBox="0 0 24 24" width="16" height="16"><path fill="currentColor" d="M18.3 5.71L12 12.01l-6.3-6.3-1.4 1.4 6.3 6.3-6.3 6.29 1.4 1.4 6.3-6.29 6.3 6.29 1.4-1.4-6.3-6.29 6.3-6.3z"/></svg>
+          </button>
+          <button class="icon-btn" id="btn-pick-end" title="Choisir sur la carte" aria-label="Choisir l'arrivée sur la carte">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 2C7.6 2 4 5.6 4 10c0 5.4 7 11.4 7.3 11.6a1 1 0 0 0 1.4 0C13 21.4 20 15.4 20 10c0-4.4-3.6-8-8-8zm0 11a3 3 0 110-6 3 3 0 010 6z"/></svg>
+          </button>
+        </div>
+        <ul class="suggestions" id="suggestions-end" hidden></ul>
+      </div>
+
+      <div class="field-group" id="detour-field-group">
+        <label class="field-label detour-checkbox-label" for="chk-detours">
+          <input type="checkbox" id="chk-detours"> Ajouter des détours pour allonger le trajet
+        </label>
+        <div id="detour-options" hidden>
+          <div class="mode-grid detour-type-grid" id="detour-target-type-grid">
+            <button type="button" class="mode-btn is-active" data-detour-type="distance">Distance cible</button>
+            <button type="button" class="mode-btn" data-detour-type="time">Temps cible</button>
+          </div>
+          <div class="search-row" style="margin-top:10px;">
+            <input type="number" id="input-detour-target" class="text-input" placeholder="ex. 60" min="1" step="1">
+            <span class="detour-unit" id="detour-target-unit">km</span>
+          </div>
+          <p class="field-hint" id="detour-hint">Distance directe : calculée une fois départ et arrivée renseignés.</p>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Mode de parcours</label>
+        <div class="mode-grid" id="mode-grid">
+          <button class="mode-btn is-active" data-mode="point-to-point">
+            <span class="mode-icon">→</span><span>Aller A → B</span>
+          </button>
+          <button class="mode-btn" data-mode="loop">
+            <span class="mode-icon">↻</span><span>Boucle</span>
+          </button>
+          <button class="mode-btn" data-mode="random-loop">
+            <span class="mode-icon">✳</span><span>Boucle aléatoire</span>
+          </button>
+          <button class="mode-btn" data-mode="out-and-back">
+            <span class="mode-icon">⇄</span><span>Aller-retour</span>
+          </button>
+          <button class="mode-btn" data-mode="loop-waypoints">
+            <span class="mode-icon">◈</span><span>Boucle par points</span>
+          </button>
+          <button class="mode-btn" data-mode="city-tour">
+            <span class="mode-icon">🏛</span><span>Visite citadine</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="field-group" id="city-tour-field-group" style="display:none;">
+        <label class="field-label" for="range-city-radius">Rayon de recherche : <span id="val-city-radius">3</span> km</label>
+        <input type="range" id="range-city-radius" min="1" max="8" step="0.5" value="3">
+        <label class="field-label" for="range-city-stops">Nombre d'arrêts souhaité : <span id="val-city-stops">6</span></label>
+        <input type="range" id="range-city-stops" min="3" max="12" step="1" value="6">
+        <label class="field-label">Déplacement</label>
+        <div class="mode-grid city-tour-transport-grid" id="city-tour-transport-grid">
+          <button type="button" class="mode-btn is-active" data-transport="foot">🚶 À pied</button>
+          <button type="button" class="mode-btn" data-transport="bike">🚲 À vélo tranquille</button>
+        </div>
+        <select id="select-city-transport" hidden>
+          <option value="foot" selected>foot</option>
+          <option value="bike">bike</option>
+        </select>
+        <p class="field-hint">Recherche les monuments, musées, points de vue et sites remarquables via OpenStreetMap (Overpass), puis construit un itinéraire les reliant.</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Type de vélo</label>
+        <div class="mode-grid" id="bike-type-grid">
+          <button class="mode-btn is-active" data-bike-type="road">
+            <span class="mode-icon">🚴</span><span>Course</span>
+          </button>
+          <button class="mode-btn" data-bike-type="gravel">
+            <span class="mode-icon">🚵</span><span>Gravel</span>
+          </button>
+          <button class="mode-btn" data-bike-type="vtt">
+            <span class="mode-icon">⛰</span><span>VTT</span>
+          </button>
+        </div>
+        <select id="select-bike-type" hidden>
+          <option value="road" selected>road</option>
+          <option value="gravel">gravel</option>
+          <option value="vtt">vtt</option>
+        </select>
+      </div>
+
+      <div class="field-group" id="route-count-field-group">
+        <label class="field-label" for="select-route-count">Nombre de parcours à générer</label>
+        <select id="select-route-count" class="select-input">
+          <option value="1" selected>1 itinéraire</option>
+          <option value="2">2 itinéraires</option>
+          <option value="3">3 itinéraires</option>
+        </select>
+      </div>
+
+      <button class="btn-primary btn-generate" id="btn-generate">Générer 3 parcours</button>
+    </section>
+
+    <!-- ================= ONGLET CRITERES ================= -->
+    <section class="tab-panel" id="tab-criteria">
+
+      <div class="field-group" id="distance-field">
+        <label class="field-label" for="range-distance">Distance souhaitée : <span id="val-distance">60</span> km</label>
+        <input type="range" id="range-distance" min="10" max="300" step="5" value="60">
+        <label class="field-label" for="range-tolerance">Tolérance : ± <span id="val-tolerance">10</span> %</label>
+        <input type="range" id="range-tolerance" min="0" max="50" step="5" value="10">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="range-elevation">Dénivelé souhaité : <span id="val-elevation">1000</span> m D+</label>
+        <input type="range" id="range-elevation" min="0" max="4000" step="50" value="1000">
+        <label class="field-label" for="select-relief">Type de relief</label>
+        <select id="select-relief" class="select-input">
+          <option value="flat">Plat</option>
+          <option value="rolling" selected>Vallonné</option>
+          <option value="hilly">Montagneux</option>
+          <option value="mountain">Haute montagne / cols</option>
+        </select>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="range-major-roads">Nb max de grandes routes traversées : <span id="val-major-roads">3</span></label>
+        <input type="range" id="range-major-roads" min="0" max="15" step="1" value="3">
+        <label class="field-label" for="range-lights">Nb max de feux tricolores : <span id="val-lights">10</span></label>
+        <input type="range" id="range-lights" min="0" max="40" step="1" value="10">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label">Préférences (cocher tout ce qui s'applique)</label>
+        <div class="chip-grid" id="preferences-chips">
+          <button class="chip" data-pref="small-roads">Petites routes</button>
+          <button class="chip" data-pref="scenic">Routes panoramiques</button>
+          <button class="chip" data-pref="villages">Villages</button>
+          <button class="chip" data-pref="valleys">Vallées</button>
+          <button class="chip" data-pref="cols">Cols</button>
+          <button class="chip" data-pref="riverside">Bords de rivière</button>
+        </div>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="range-speed">Vitesse moyenne : <span id="val-speed">27</span> km/h</label>
+        <input type="range" id="range-speed" min="15" max="40" step="1" value="27">
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="select-engine">Moteur de routage</label>
+        <select id="select-engine" class="select-input">
+          <option value="auto" selected>Automatique (ORS, repli sur BRouter si indisponible)</option>
+          <option value="ors">OpenRouteService uniquement</option>
+          <option value="brouter">BRouter uniquement (gratuit, sans clé)</option>
+        </select>
+        <p class="field-hint">BRouter est un service public gratuit sans clé, mais ne fournit pas le détail % pistes cyclables / % petites routes (affiché "N/D" dans ce cas).</p>
+      </div>
+
+      <div class="field-group">
+        <label class="field-label" for="input-ors-key">Clé API OpenRouteService</label>
+        <div class="search-row">
+          <input type="password" id="input-ors-key" class="text-input" placeholder="Collez votre clé ORS ici">
+          <button class="icon-btn" id="btn-toggle-key" type="button" title="Afficher/masquer la clé" aria-label="Afficher ou masquer la clé">
+            <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M12 5c-7 0-10 7-10 7s3 7 10 7 10-7 10-7-3-7-10-7zm0 12a5 5 0 110-10 5 5 0 010 10zm0-8a3 3 0 100 6 3 3 0 000-6z"/></svg>
+          </button>
+        </div>
+        <p class="field-hint">Clé gratuite sur <a href="https://openrouteservice.org/dev/#/signup" target="_blank" rel="noopener">openrouteservice.org</a>. Stockée uniquement sur cet appareil.</p>
+      </div>
+    </section>
+
+    <!-- ================= ONGLET RESULTATS ================= -->
+    <section class="tab-panel" id="tab-results">
+      <div id="results-empty" class="results-empty">
+        <p>Aucun parcours généré pour l'instant.</p>
+        <p class="results-empty-sub">Renseignez un départ et lancez la génération depuis l'onglet Rechercher.</p>
+      </div>
+      <div id="results-list" class="results-list"></div>
+    </section>
+
+  </div>
+</div>
+
+<!-- Zone de chargement -->
+<div id="loading-overlay" class="loading-overlay" hidden>
+  <div class="spinner"></div>
+  <p id="loading-text">Calcul des parcours…</p>
+  <button id="btn-cancel-loading" class="btn-ghost btn-cancel-loading" type="button">Annuler</button>
+</div>
+
+<!-- Zone de notifications toast -->
+<div id="toast-container" class="toast-container" aria-live="polite"></div>
+
+<!-- Panneau de diagnostic visible à l'écran (pas besoin d'ouvrir les devtools) -->
+<div id="debug-panel" class="debug-panel is-collapsed">
+  <div class="debug-panel-header-row">
+    <button id="debug-panel-toggle" class="debug-panel-header" type="button">
+      Journal RoadPlanner (diagnostic) — cliquer pour déplier/replier — <span id="app-version-badge"></span>
+    </button>
+    <button id="btn-copy-debug-log" class="debug-panel-copy-btn" type="button" title="Copier le journal">Copier</button>
+  </div>
+  <pre id="debug-log" class="debug-log"></pre>
+</div>
+
+<!-- Leaflet -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<script src="js/utils.js"></script>
+<script src="js/map.js"></script>
+<script src="js/geocoder.js"></script>
+<script src="js/profiles.js"></script>
+<script src="js/routing.js"></script>
+<script src="js/loops.js"></script>
+<script src="js/poi.js"></script>
+<script src="js/gpx.js"></script>
+<script src="js/weather.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>

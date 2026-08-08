@@ -1,0 +1,742 @@
+/* =========================================================================
+   RoadPlanner — style.css
+   Base commune (mobile + desktop). Identité visuelle : "instrument de bord
+   cycliste" — asphalte sombre, jaune de marquage routier en accent,
+   typographie condensée pour les chiffres (façon compteur Garmin/Wahoo).
+   ========================================================================= */
+
+:root {
+  /* --- Palette --- */
+  --color-bg: #14171A;           /* asphalte */
+  --color-surface: #1C2024;      /* panneau */
+  --color-surface-alt: #23282D;  /* cartes / champs */
+  --color-border: #30363C;
+  --color-text: #F2F0EA;         /* blanc craie */
+  --color-text-dim: #9AA2A9;
+  --color-accent: #E4B93B;       /* jaune marquage route */
+  --color-accent-dark: #B8931F;
+  --color-route-principal: #FF5A36; /* orange vif */
+  --color-route-bis: #1E88E5;       /* bleu vif */
+  --color-route-cyclable: #00C853;  /* vert vif */
+  --color-danger: #C4432B;
+  --color-success: #4C9A5B;
+
+  /* --- Typo --- */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
+
+  /* --- Layout --- */
+  --panel-width-desktop: 400px;
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 16px;
+  --shadow-elevated: 0 8px 24px rgba(0,0,0,0.45);
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* =========================================================================
+   Thème clair (bascule via bouton FAB, appliqué sur <html data-theme="light">)
+   ========================================================================= */
+:root[data-theme="light"] {
+  --color-bg: #F4F1E9;           /* papier clair */
+  --color-surface: #FFFFFF;
+  --color-surface-alt: #F0ECE1;
+  --color-border: #DDD6C7;
+  --color-text: #1C2024;
+  --color-text-dim: #6B6456;
+  --color-accent: #C99A1E;
+  --color-accent-dark: #9C7815;
+  --color-route-principal: #E5491F;
+  --color-route-bis: #1565C0;
+  --color-route-cyclable: #00A344;
+  --color-danger: #B23A22;
+  --color-success: #3F7F49;
+  --shadow-elevated: 0 8px 24px rgba(28,32,36,0.16);
+}
+
+* { box-sizing: border-box; }
+
+/* Règle de sécurité globale : garantit que l'attribut hidden masque
+   TOUJOURS un élément, même si une règle de classe définit son propre
+   `display` (ex. `display:flex`) avec une spécificité équivalente à la
+   feuille de style du navigateur. Sans ce !important, un élément marqué
+   hidden mais stylé en display:flex/block reste visible en permanence. */
+[hidden] { display: none !important; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  overflow: hidden;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-body);
+  -webkit-tap-highlight-color: transparent;
+}
+
+#map {
+  position: fixed;
+  inset: 0;
+  z-index: 1;
+  background: #0e1012;
+}
+
+/* Rend les popups/attributions Leaflet cohérentes avec le thème sombre */
+.leaflet-control-attribution {
+  background: rgba(20,23,26,0.75) !important;
+  color: var(--color-text-dim) !important;
+  font-family: var(--font-body);
+  font-size: 10px;
+}
+.leaflet-control-attribution a { color: var(--color-text-dim); }
+.leaflet-control-zoom { display: none; } /* on gère le zoom au doigt/molette uniquement, chrome plus sobre */
+
+/* =========================================================================
+   Boutons flottants (FAB)
+   ========================================================================= */
+.fab {
+  position: fixed;
+  z-index: 500;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface);
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: var(--shadow-elevated);
+  cursor: pointer;
+}
+.fab:active { transform: scale(0.94); }
+
+/* =========================================================================
+   Panneau (structure commune ; positionnement en media queries dédiées)
+   ========================================================================= */
+.panel {
+  position: fixed;
+  z-index: 400;
+  background: var(--color-surface);
+  display: flex;
+  flex-direction: column;
+  box-shadow: var(--shadow-elevated);
+}
+
+.panel-scroll {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  flex: 1;
+  padding: 0 16px 56px;
+  -webkit-overflow-scrolling: touch;
+}
+
+.panel-handle {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 40px;
+  padding: 14px 0;
+  cursor: grab;
+  touch-action: none;
+}
+.handle-bar {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--color-border);
+}
+
+/* =========================================================================
+   Onglets
+   ========================================================================= */
+.panel-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 0 0 16px;
+  background: var(--color-surface-alt);
+  border-radius: var(--radius-md);
+  position: sticky;
+  top: 0;
+}
+.tab-btn {
+  flex: 1;
+  border: none;
+  background: transparent;
+  color: var(--color-text-dim);
+  font-family: var(--font-body);
+  font-weight: 600;
+  font-size: 13px;
+  padding: 9px 6px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.tab-btn.is-active {
+  background: var(--color-accent);
+  color: #14171A;
+}
+
+.tab-panel { display: none; }
+.tab-panel.is-active { display: block; }
+
+/* =========================================================================
+   Champs de formulaire
+   ========================================================================= */
+.field-group { margin-bottom: 20px; }
+
+.field-label {
+  display: block;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin-bottom: 8px;
+}
+.field-label span { color: var(--color-accent); font-family: var(--font-display); font-size: 15px; }
+
+.field-hint {
+  font-size: 12px;
+  color: var(--color-text-dim);
+  margin: 6px 0 0;
+}
+.field-hint a { color: var(--color-accent); }
+
+.text-input, .select-input {
+  width: 100%;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 11px 12px;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-body);
+  font-size: 14.5px;
+  outline: none;
+}
+.text-input:focus, .select-input:focus { border-color: var(--color-accent); }
+
+.search-row { display: flex; gap: 8px; }
+.search-row .text-input { flex: 1; }
+
+.icon-btn {
+  width: 42px;
+  flex-shrink: 0;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-accent);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.icon-btn.btn-clear-field {
+  width: 36px;
+  color: var(--color-text-dim);
+}
+.icon-btn.btn-clear-field:hover { color: var(--color-danger); }
+
+.icon-btn.is-active { background: var(--color-accent); color: #14171A; }
+
+input[type="range"] {
+  width: 100%;
+  accent-color: var(--color-accent);
+  margin-bottom: 14px;
+  height: 20px;
+}
+
+/* =========================================================================
+   Suggestions d'autocomplétion
+   ========================================================================= */
+.suggestions {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 4px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  max-height: 240px;
+  overflow-y: auto;
+}
+.suggestions li {
+  padding: 9px 10px;
+  font-size: 13.5px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.suggestions li:hover, .suggestions li.is-focused { background: rgba(228,185,59,0.14); }
+.suggestions li .suggestion-type {
+  display: block;
+  font-size: 11px;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+}
+
+/* =========================================================================
+   Points de passage
+   ========================================================================= */
+.waypoints-list { list-style: none; margin: 0 0 8px; padding: 0; }
+.waypoint-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  margin-bottom: 6px;
+  font-size: 13.5px;
+}
+.waypoint-item .wp-index {
+  font-family: var(--font-display);
+  color: var(--color-accent);
+  font-weight: 600;
+  min-width: 18px;
+}
+.waypoint-item .wp-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.waypoint-item .wp-remove {
+  background: none; border: none; color: var(--color-text-dim); cursor: pointer; font-size: 16px; line-height: 1;
+}
+
+.btn-ghost {
+  background: none;
+  border: 1px dashed var(--color-border);
+  color: var(--color-accent);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 9px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  width: 100%;
+}
+
+/* =========================================================================
+   Sélecteur de mode
+   ========================================================================= */
+.mode-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+.mode-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  border-radius: var(--radius-sm);
+  padding: 12px 6px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+}
+.mode-btn .mode-icon { font-size: 18px; color: var(--color-text-dim); }
+.mode-btn.is-active { border-color: var(--color-accent); color: var(--color-text); background: rgba(228,185,59,0.10); }
+.mode-btn.is-active .mode-icon { color: var(--color-accent); }
+
+#bike-type-grid { grid-template-columns: repeat(3, 1fr); }
+
+/* =========================================================================
+   Section détours (mode Aller A → B)
+   ========================================================================= */
+.detour-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  text-transform: none;
+  color: var(--color-text);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+.detour-checkbox-label input[type="checkbox"] {
+  width: 17px; height: 17px; accent-color: var(--color-accent); cursor: pointer;
+}
+.detour-type-grid { grid-template-columns: repeat(2, 1fr); margin-top: 10px; }
+.detour-type-grid .mode-btn { padding: 9px 6px; font-size: 12.5px; }
+.detour-unit {
+  align-self: center;
+  color: var(--color-text-dim);
+  font-size: 13px;
+  min-width: 34px;
+}
+
+/* =========================================================================
+   Chips de préférences
+   ========================================================================= */
+.chip-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-dim);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.chip.is-active { background: var(--color-accent); border-color: var(--color-accent); color: #14171A; }
+
+/* =========================================================================
+   Boutons principaux
+   ========================================================================= */
+.btn-primary {
+  width: 100%;
+  background: var(--color-accent);
+  color: #14171A;
+  border: none;
+  font-family: var(--font-body);
+  font-weight: 700;
+  font-size: 15px;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+}
+.btn-primary:active { background: var(--color-accent-dark); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+/* =========================================================================
+   Résultats / cartes de parcours
+   ========================================================================= */
+.results-empty {
+  text-align: center;
+  color: var(--color-text-dim);
+  padding: 40px 12px;
+  font-size: 14px;
+}
+.results-empty-sub { font-size: 12.5px; margin-top: 6px; }
+
+.results-list { display: flex; flex-direction: column; gap: 14px; }
+
+.route-card {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  border-left: 4px solid var(--route-color, var(--color-accent));
+  border-radius: var(--radius-md);
+  padding: 14px;
+}
+.route-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.route-card-title { display: flex; align-items: center; gap: 8px; }
+.route-swatch {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--route-color, var(--color-accent));
+  flex-shrink: 0;
+}
+.route-name { font-weight: 700; font-size: 14.5px; }
+.route-engine-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-text-dim);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  padding: 2px 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+.route-visibility-toggle {
+  background: none; border: 1px solid var(--color-border); color: var(--color-text-dim);
+  border-radius: var(--radius-sm); font-size: 11px; padding: 5px 9px; cursor: pointer; font-weight: 600;
+}
+.route-visibility-toggle.is-visible { color: var(--route-color, var(--color-accent)); border-color: var(--route-color, var(--color-accent)); }
+
+.route-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px 6px;
+  margin-bottom: 10px;
+}
+.stat-block { text-align: left; }
+.stat-value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--color-text);
+}
+.stat-value small { font-size: 11px; font-weight: 500; color: var(--color-text-dim); margin-left: 2px; font-family: var(--font-body); }
+.stat-label {
+  font-size: 10.5px;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-top: 2px;
+}
+
+.elevation-profile { margin-bottom: 12px; }
+.elevation-profile-svg { width: 100%; height: 56px; display: block; }
+.elevation-profile-labels {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--color-text-dim);
+  margin-top: 4px;
+}
+.elevation-profile-labels-sep { opacity: 0.5; }
+.elevation-profile-empty {
+  font-size: 12px;
+  color: var(--color-text-dim);
+  font-style: italic;
+  padding: 14px 0;
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.route-actions { display: flex; gap: 8px; }
+.route-actions .btn-export {
+  flex: 1;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  font-size: 12.5px;
+  font-weight: 600;
+  padding: 9px 4px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.route-actions .btn-export:hover { border-color: var(--color-accent); color: var(--color-accent); }
+
+/* =========================================================================
+   Overlay de chargement
+   ========================================================================= */
+.loading-overlay {
+  position: fixed; inset: 0; z-index: 900;
+  background: rgba(20,23,26,0.72);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px;
+}
+.spinner {
+  width: 34px; height: 34px; border-radius: 50%;
+  border: 3px solid var(--color-border);
+  border-top-color: var(--color-accent);
+  animation: spin 0.8s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+#loading-text { font-size: 13.5px; color: var(--color-text-dim); }
+.btn-cancel-loading { width: auto; padding: 8px 18px; margin-top: 4px; }
+
+/* =========================================================================
+   Toasts
+   ========================================================================= */
+.toast-container {
+  position: fixed;
+  z-index: 950;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: calc(20px + var(--safe-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: center;
+  pointer-events: none;
+}
+.toast {
+  background: var(--color-surface-alt);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+  padding: 10px 16px;
+  border-radius: 999px;
+  font-size: 13px;
+  box-shadow: var(--shadow-elevated);
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+.toast.is-visible { opacity: 1; transform: translateY(0); }
+.toast.is-error { border-color: var(--color-danger); color: #ffb4a5; }
+
+/* Marqueurs personnalisés */
+.rp-marker-pin {
+  width: 26px; height: 26px; border-radius: 50% 50% 50% 0;
+  transform: rotate(-45deg);
+  border: 2px solid #14171A;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+.rp-marker-pin.start { background: var(--color-success); }
+.rp-marker-pin.end { background: var(--color-danger); }
+.rp-marker-pin.waypoint { background: var(--color-accent); width: 20px; height: 20px; }
+
+/* =========================================================================
+   Marqueurs de points d'intérêt (Visite citadine)
+   ========================================================================= */
+.rp-poi-marker {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: #9C5FE0;
+  border: 2px solid #14171A;
+  color: #fff;
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.5);
+}
+
+.city-tour-transport-grid { grid-template-columns: repeat(2, 1fr); margin-bottom: 10px; }
+
+/* =========================================================================
+   Étiquettes km/temps le long des tracés
+   ========================================================================= */
+.rp-route-label {
+  transform: translate(-50%, calc(-100% - var(--label-offset, 0px)));
+  background: rgba(11,13,15,0.88);
+  color: #fff;
+  border: 1.5px solid var(--label-color, var(--color-accent));
+  border-radius: 999px;
+  padding: 3px 9px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+  pointer-events: none;
+}
+
+/* =========================================================================
+   Menu contextuel de la carte (clic droit / appui long)
+   ========================================================================= */
+.rp-context-popup .leaflet-popup-content-wrapper {
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  padding: 0;
+}
+.rp-context-popup .leaflet-popup-content { margin: 6px; }
+.rp-context-popup .leaflet-popup-tip { background: var(--color-surface); border: 1px solid var(--color-border); }
+
+.map-context-menu { display: flex; flex-direction: column; min-width: 210px; }
+.map-context-menu button {
+  background: none;
+  border: none;
+  color: var(--color-text);
+  text-align: left;
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.map-context-menu button:hover,
+.map-context-menu button:active { background: rgba(228,185,59,0.14); }
+
+/* =========================================================================
+   Bandeau d'avertissement protocole file://
+   ========================================================================= */
+.protocol-warning {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  z-index: 1000;
+  background: var(--color-danger);
+  color: #fff;
+  padding: 10px 44px 10px 14px;
+  font-size: 13px;
+  line-height: 1.4;
+  display: flex;
+  align-items: center;
+  box-shadow: var(--shadow-elevated);
+}
+.protocol-warning code {
+  background: rgba(0,0,0,0.25);
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+}
+body.has-protocol-warning #map { top: 44px; }
+body.has-protocol-warning .fab { margin-top: 44px; }
+
+/* =========================================================================
+   Panneau de diagnostic visible à l'écran (aucune interaction requise)
+   ========================================================================= */
+.debug-panel {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 980;
+  max-height: 34vh;
+  background: rgba(10, 12, 14, 0.94);
+  border-top: 2px solid var(--color-accent);
+  display: flex;
+  flex-direction: column;
+  font-family: var(--font-mono);
+  transition: max-height 0.25s ease;
+}
+.debug-panel.is-collapsed { max-height: 34px; }
+.debug-panel.is-collapsed .debug-log { display: none; }
+.debug-panel-header {
+  width: 100%;
+  padding: 8px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--font-mono);
+}
+.debug-panel-header-row {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--color-border);
+  flex-shrink: 0;
+}
+.debug-panel-header { border-bottom: none; flex: 1; }
+.debug-panel-copy-btn {
+  flex-shrink: 0;
+  background: var(--color-surface-alt);
+  border: none;
+  border-left: 1px solid var(--color-border);
+  color: var(--color-accent);
+  font-family: var(--font-mono);
+  font-size: 10.5px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 0 14px;
+  cursor: pointer;
+}
+.debug-panel-copy-btn.is-copied { color: var(--color-success); }
+
+#app-version-badge {
+  color: #fff;
+  background: var(--color-accent);
+  padding: 1px 6px;
+  border-radius: 999px;
+  font-weight: 700;
+}
+.debug-log {
+  margin: 0;
+  padding: 8px 12px 12px;
+  overflow-y: auto;
+  font-size: 11.5px;
+  line-height: 1.55;
+  color: #D6D9DC;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.debug-log .log-ok { color: #7CC576; }
+.debug-log .log-warn { color: #E4B93B; }
+.debug-log .log-error { color: #FF8A70; font-weight: 600; }
+.debug-log .log-time { color: #6B7278; }
