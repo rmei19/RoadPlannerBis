@@ -11,7 +11,7 @@
   // dans service-worker.js) : permet de vérifier en un coup d'œil, via le
   // panneau de diagnostic (visible même replié), si un déploiement a bien
   // été pris en compte par le navigateur.
-  const APP_VERSION = 'v18';
+  const APP_VERSION = 'v19';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -34,7 +34,7 @@
 
   function init() {
     const badge = document.getElementById('app-version-badge');
-    if (badge) badge.textContent = APP_VERSION;
+    if (badge) badge.textContent = APP_VERSION.toUpperCase();
     RPUtils.debugLog(`Application initialisée (RoadPlanner ${APP_VERSION}).`, 'ok');
 
     // Chaque étape d'initialisation est isolée : si l'une échoue (ex. un

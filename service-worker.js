@@ -8,7 +8,7 @@
  * des itinéraires et dépasserait vite les quotas de stockage sur mobile.
  */
 
-const CACHE_NAME = 'roadplanner-bis-shell-v18';
+const CACHE_NAME = 'roadplanner-bis-shell-v19';
 
 const APP_SHELL = [
   './index.html',

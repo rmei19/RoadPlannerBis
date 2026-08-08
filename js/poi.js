@@ -16,16 +16,23 @@ const RPPoi = (() => {
   // (erreurs 504) : c'est un problème connu et documenté côté communauté
   // OpenStreetMap (infrastructure publique gratuite, pas un bug de l'app).
   // On essaie plusieurs miroirs publics dans l'ordre, le premier qui répond
-  // est utilisé. IMPORTANT : uniquement des miroirs à couverture MONDIALE
-  // confirmée (certains miroirs, comme overpass.osm.ch, ne contiennent que
-  // les données d'un seul pays et répondent "avec succès" avec 0 résultat
-  // ailleurs — silencieusement trompeur, à éviter absolument).
+  // est utilisé. Uniquement des miroirs confirmés compatibles CORS
+  // (accessibles depuis un navigateur web, pas juste des outils serveur) et
+  // à couverture MONDIALE (certains miroirs, comme overpass.osm.ch, ne
+  // contiennent que les données d'un seul pays et répondent "avec succès"
+  // avec 0 résultat ailleurs — silencieusement trompeur, à éviter absolument).
   const OVERPASS_URLS = [
     'https://overpass-api.de/api/interpreter',
     'https://overpass.kumi.systems/api/interpreter',
-    'https://api.openstreetmap.fr/oapi/interpreter',
-    'https://overpass.osm.vi-di.fr/api/interpreter',
   ];
+
+  // Secours final si TOUS les miroirs Overpass échouent (infrastructure
+  // communautaire parfois surchargée en même temps partout) : l'API de
+  // géolocalisation de Wikipédia, une infrastructure bien plus robuste,
+  // indépendante d'Overpass. Moins de détail (pas de catégorie précise),
+  // mais chaque résultat correspond forcément à un lieu notable (article
+  // Wikipédia existant), donc pertinent pour une visite.
+  const WIKIPEDIA_GEOSEARCH_URL = 'https://fr.wikipedia.org/w/api.php';
 
   const CATEGORY_LABELS = {
     historic: 'Site historique',
@@ -53,9 +60,11 @@ const RPPoi = (() => {
   /**
    * Interroge Overpass pour les points d'intérêt dans un rayon (mètres)
    * autour d'un point [lat,lng]. Ne garde que les éléments nommés (un POI
-   * sans nom n'est pas exploitable pour une visite guidée).
+   * sans nom n'est pas exploitable pour une visite guidée). Renvoie `null`
+   * (pas d'exception) si tous les miroirs échouent, pour laisser fetchPois()
+   * basculer sur le secours Wikipédia.
    */
-  async function fetchPois([lat, lng], radiusMeters) {
+  async function fetchPoisFromOverpass([lat, lng], radiusMeters) {
     const query = `[out:json][timeout:12];
 (
   node["historic"]["name"](around:${radiusMeters},${lat},${lng});
@@ -65,7 +74,6 @@ const RPPoi = (() => {
 );
 out body;`;
 
-    let lastError = null;
     for (const url of OVERPASS_URLS) {
       let res;
       try {
@@ -75,14 +83,10 @@ out body;`;
           body: query,
         }, 12000);
       } catch (err) {
-        lastError = err.name === 'AbortError'
-          ? new Error(`${url} : délai dépassé`)
-          : new Error(`${url} : ${err.message}`);
         RPUtils.debugLog(`Overpass (${url}) indisponible, essai du miroir suivant…`, 'warn');
         continue;
       }
       if (!res.ok) {
-        lastError = new Error(`${url} a répondu ${res.status}`);
         RPUtils.debugLog(`Overpass (${url}) a répondu ${res.status}, essai du miroir suivant…`, 'warn');
         continue;
       }
@@ -101,7 +105,56 @@ out body;`;
           };
         });
     }
-    throw new Error('Les serveurs Overpass publics sont surchargés en ce moment (infrastructure gratuite partagée par toute la communauté OpenStreetMap, pas un bug de l\'app) — réessayez dans quelques minutes, ou avec un rayon de recherche plus petit.');
+    return null; // tous les miroirs ont échoué
+  }
+
+  /**
+   * Secours si Overpass est entièrement indisponible : l'API de
+   * géolocalisation de Wikipédia (infrastructure Wikimedia, largement plus
+   * robuste que les miroirs communautaires Overpass). Moins de détail (pas
+   * de catégorie précise), mais chaque résultat est par nature un lieu
+   * notable puisqu'il possède un article Wikipédia.
+   */
+  async function fetchPoisFromWikipedia([lat, lng], radiusMeters) {
+    const params = new URLSearchParams({
+      action: 'query',
+      list: 'geosearch',
+      gscoord: `${lat}|${lng}`,
+      gsradius: String(Math.min(10000, Math.round(radiusMeters))), // limite API : 10 km max
+      gslimit: '50',
+      format: 'json',
+      origin: '*', // active le CORS côté API Wikipédia
+    });
+    const res = await RPUtils.fetchWithTimeout(`${WIKIPEDIA_GEOSEARCH_URL}?${params.toString()}`, {}, 10000);
+    if (!res.ok) throw new Error(`Wikipédia a répondu ${res.status}`);
+    const data = await res.json();
+    const results = data?.query?.geosearch || [];
+    return results.map((r) => ({
+      lat: r.lat,
+      lng: r.lon,
+      name: r.title,
+      category: 'wikipedia',
+      categoryLabel: 'Lieu notable (Wikipédia)',
+      notable: true,
+    }));
+  }
+
+  /**
+   * Point d'entrée public : tente Overpass (plusieurs miroirs), et bascule
+   * sur Wikipédia GeoSearch si Overpass est entièrement indisponible.
+   */
+  async function fetchPois(start, radiusMeters) {
+    const overpassResults = await fetchPoisFromOverpass(start, radiusMeters);
+    if (overpassResults !== null) return overpassResults;
+
+    RPUtils.debugLog('Tous les miroirs Overpass ont échoué, bascule sur Wikipédia (lieux notables uniquement)…', 'warn');
+    try {
+      const wikiResults = await fetchPoisFromWikipedia(start, radiusMeters);
+      RPUtils.debugLog(`Wikipédia a pris le relais avec succès (${wikiResults.length} lieu(x) trouvé(s)).`, 'ok');
+      return wikiResults;
+    } catch (err) {
+      throw new Error('Les serveurs Overpass ET Wikipédia sont indisponibles en ce moment — réessayez dans quelques minutes.');
+    }
   }
 
   /**
