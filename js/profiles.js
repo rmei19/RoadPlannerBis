@@ -142,6 +142,7 @@ const RPProfiles = (() => {
       routingEngine: getVal('select-engine') || 'auto',
       bikeType: getVal('select-bike-type') || 'road',
       routeCount: parseInt(getVal('select-route-count'), 10) || 1,
+      singleRouteType: getVal('select-single-route-type') || 'principal',
     };
   }
 
@@ -160,8 +161,16 @@ const RPProfiles = (() => {
     return options;
   }
 
-  /** Retourne les N premières définitions de parcours selon le nombre choisi par l'utilisateur (1, 2 ou 3). */
-  function getRouteDefinitions(count = 3) {
+  /**
+   * Retourne les définitions de parcours à générer. Si count=1, renvoie
+   * l'itinéraire précisément choisi par l'utilisateur (route directe / bis /
+   * cyclable), pas systématiquement le premier de la liste.
+   */
+  function getRouteDefinitions(count = 3, singleRouteType = 'principal') {
+    if (count === 1) {
+      const chosen = ROUTE_DEFS.find((d) => d.id === singleRouteType);
+      return [chosen || ROUTE_DEFS[0]];
+    }
     return ROUTE_DEFS.slice(0, Math.max(1, Math.min(3, count)));
   }
 

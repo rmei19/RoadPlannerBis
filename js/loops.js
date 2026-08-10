@@ -34,7 +34,14 @@ const RPLoops = (() => {
     // polygone théorique. Sans correction, le parcours final dépasse
     // systématiquement la distance demandée d'environ 25 à 35%. On compense
     // en visant un périmètre théorique plus court que la distance demandée.
-    const CIRCUITY_FACTOR = 1.3;
+    // CORRECTION DE CIRCUITÉ : une route réelle serpente et contourne les
+    // obstacles (rivières, lacs, reliefs...), donc la distance routée est
+    // toujours supérieure à la distance à vol d'oiseau entre les sommets du
+    // polygone théorique. Un premier facteur de 1.3 s'est avéré insuffisant
+    // en usage réel (retours observés : 60km voulus -> 80km réels, 40km
+    // voulus -> 60km réels, soit un ratio réel/voulu de 1.33 à 1.5 malgré la
+    // correction) : le facteur nécessaire est donc plus proche de 1.8.
+    const CIRCUITY_FACTOR = 1.8;
     const n = vertices;
     const perimeterM = (distanceKm * 1000) / CIRCUITY_FACTOR;
     const radiusM = perimeterM / (2 * n * Math.sin(Math.PI / n));

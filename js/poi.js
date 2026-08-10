@@ -144,17 +144,21 @@ out body;`;
    * sur Wikipédia GeoSearch si Overpass est entièrement indisponible.
    */
   async function fetchPois(start, radiusMeters) {
+    try {
+      const wikiResults = await fetchPoisFromWikipedia(start, radiusMeters);
+      if (wikiResults.length) {
+        RPUtils.debugLog(`Wikipédia : ${wikiResults.length} lieu(x) trouvé(s).`, 'ok');
+        return wikiResults;
+      }
+      RPUtils.debugLog('Wikipédia n\'a rien trouvé dans ce rayon, essai via Overpass…', 'warn');
+    } catch (err) {
+      RPUtils.debugLog(`Wikipédia indisponible (${err.message}), essai via Overpass…`, 'warn');
+    }
+
     const overpassResults = await fetchPoisFromOverpass(start, radiusMeters);
     if (overpassResults !== null) return overpassResults;
 
-    RPUtils.debugLog('Tous les miroirs Overpass ont échoué, bascule sur Wikipédia (lieux notables uniquement)…', 'warn');
-    try {
-      const wikiResults = await fetchPoisFromWikipedia(start, radiusMeters);
-      RPUtils.debugLog(`Wikipédia a pris le relais avec succès (${wikiResults.length} lieu(x) trouvé(s)).`, 'ok');
-      return wikiResults;
-    } catch (err) {
-      throw new Error('Les serveurs Overpass ET Wikipédia sont indisponibles en ce moment — réessayez dans quelques minutes.');
-    }
+    throw new Error('Wikipédia et les serveurs Overpass sont indisponibles en ce moment — réessayez dans quelques minutes, ou avec un rayon différent.');
   }
 
   /**

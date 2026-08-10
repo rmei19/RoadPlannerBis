@@ -11,7 +11,11 @@
   // dans service-worker.js) : permet de vérifier en un coup d'œil, via le
   // panneau de diagnostic (visible même replié), si un déploiement a bien
   // été pris en compte par le navigateur.
-  const APP_VERSION = 'v19';
+  // Nouveau schéma de version à partir d'ici : n'incrémenter le chiffre
+  // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
+  // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
+  // 2.1, 2.11...
+  const APP_VERSION = '2.0';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -34,7 +38,7 @@
 
   function init() {
     const badge = document.getElementById('app-version-badge');
-    if (badge) badge.textContent = APP_VERSION.toUpperCase();
+    if (badge) badge.textContent = APP_VERSION;
     RPUtils.debugLog(`Application initialisée (RoadPlanner ${APP_VERSION}).`, 'ok');
 
     // Chaque étape d'initialisation est isolée : si l'une échoue (ex. un
@@ -52,6 +56,7 @@
     safeInit('grille de modes', () => RPUi.initModeGrid((mode) => { state.mode = mode; }));
     safeInit('grille type de vélo', () => RPUi.initBikeTypeGrid());
     safeInit('grille transport visite citadine', () => RPUi.initCityTourTransportGrid());
+    safeInit('indice durée visite citadine', wireCityTourDurationHint);
     safeInit('libellé nombre de parcours', wireRouteCountLabel);
     safeInit('options détours', wireDetourOptions);
     safeInit('géocodage', wireGeocoding);
@@ -152,9 +157,11 @@
   function wireRouteCountLabel() {
     const select = document.getElementById('select-route-count');
     const btn = document.getElementById('btn-generate');
+    const singleTypeGroup = document.getElementById('single-route-type-field-group');
     const updateLabel = () => {
       const n = parseInt(select.value, 10) || 3;
       btn.textContent = n === 1 ? 'Générer 1 parcours' : `Générer ${n} parcours`;
+      singleTypeGroup.style.display = n === 1 ? '' : 'none';
     };
     select.addEventListener('change', updateLabel);
     updateLabel();
@@ -499,11 +506,45 @@
    * reliant. Ne passe pas par le flux standard des 3 itinéraires : le
    * concept de profils "rapide/tranquille/chemins" n'a pas de sens ici.
    */
+  /** Met à jour l'indice sous le curseur de durée de visite citadine (rayon/arrêts estimés). */
+  function wireCityTourDurationHint() {
+    const durationInput = document.getElementById('range-city-duration');
+    const transportSelect = document.getElementById('select-city-transport');
+    const hintEl = document.getElementById('city-duration-hint');
+
+    function update() {
+      const durationHours = parseFloat(durationInput.value) || 2;
+      const transport = transportSelect.value || 'foot';
+      const criteria = RPProfiles.readCriteriaFromUI();
+      const { stopCount, radiusKm } = estimateCityTourParams(durationHours, transport, criteria.avgSpeedKmh);
+      hintEl.textContent = `Environ ${stopCount} arrêts dans un rayon de ~${radiusKm.toFixed(1)} km (estimation, ajustée selon le déplacement choisi).`;
+    }
+
+    durationInput.addEventListener('input', update);
+    document.getElementById('city-tour-transport-grid').addEventListener('click', () => setTimeout(update, 0));
+    update();
+  }
+
+  /**
+   * Traduit une durée de visite souhaitée (heures) en rayon de recherche et
+   * nombre d'arrêts. Estimation grossière (comme la distance des boucles) :
+   * ~12 min de visite par arrêt + ~8 min de trajet entre deux arrêts.
+   */
+  function estimateCityTourParams(durationHours, transport, userSpeedKmh) {
+    const speedKmh = transport === 'foot' ? 4.5 : Math.min(userSpeedKmh, 16);
+    const totalMinutes = durationHours * 60;
+    const dwellPlusTravelPerStop = 12 + 8; // min : temps sur place + trajet vers l'arrêt suivant
+    const stopCount = Math.max(3, Math.min(12, Math.round(totalMinutes / dwellPlusTravelPerStop)));
+    const radiusKm = Math.max(1, Math.min(8, (speedKmh * (totalMinutes / 60)) / 4));
+    return { stopCount, radiusKm, speedKmh };
+  }
+
   async function handleCityTourGenerate(startLatLng, criteria) {
     generationCancelled = false;
-    const radiusKm = parseFloat(document.getElementById('range-city-radius').value) || 3;
-    const stopCount = parseInt(document.getElementById('range-city-stops').value, 10) || 6;
+    const durationHours = parseFloat(document.getElementById('range-city-duration').value) || 2;
     const transport = document.getElementById('select-city-transport').value || 'foot';
+    const { stopCount, radiusKm } = estimateCityTourParams(durationHours, transport, criteria.avgSpeedKmh);
+    RPUtils.debugLog(`Visite citadine : durée souhaitée ${durationHours} h -> ~${stopCount} arrêts dans un rayon de ~${radiusKm.toFixed(1)} km (estimation).`, 'info');
 
     RPUi.setLoading(true, 'Recherche des points d\'intérêt à proximité…', handleCancelGenerate);
     RPMap.clearRoutes();
@@ -512,7 +553,7 @@
     let orderedPois;
     try {
       const pois = await RPPoi.fetchPois(startLatLng, radiusKm * 1000);
-      RPUtils.debugLog(`${pois.length} point(s) d'intérêt trouvé(s) dans un rayon de ${radiusKm} km.`, 'info');
+      RPUtils.debugLog(`${pois.length} point(s) d'intérêt trouvé(s) dans un rayon de ${radiusKm.toFixed(1)} km.`, 'info');
       if (!pois.length) {
         RPUi.setLoading(false);
         RPUtils.toast('Aucun point d\'intérêt trouvé dans ce rayon. Essayez un rayon plus large ou un autre endroit.', { error: true });
@@ -612,7 +653,7 @@
     const endLatLng = state.end ? [state.end.lat, state.end.lng] : null;
     const waypointsLatLng = state.waypoints.map((w) => [w.lat, w.lng]);
     const labelBoundaryPoints = buildLabelBoundaryPoints(state.mode, startLatLng, endLatLng, waypointsLatLng);
-    const routeDefs = RPProfiles.getRouteDefinitions(criteria.routeCount);
+    const routeDefs = RPProfiles.getRouteDefinitions(criteria.routeCount, criteria.singleRouteType);
     generationCancelled = false;
 
     const isLoopMode = state.mode === 'loop' || state.mode === 'random-loop';
@@ -643,6 +684,7 @@
 
     RPUi.setLoading(true, `Calcul de ${routeDefs.length} parcours en cours…`, handleCancelGenerate);
     RPMap.clearRoutes();
+    RPMap.clearPoiMarkers(); // efface les marqueurs numérotés d'une éventuelle visite citadine précédente
     const results = [];
 
     try {

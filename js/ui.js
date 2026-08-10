@@ -134,8 +134,7 @@ const RPUi = (() => {
       ['range-major-roads', 'val-major-roads', (v) => v],
       ['range-lights', 'val-lights', (v) => v],
       ['range-speed', 'val-speed', (v) => v],
-      ['range-city-radius', 'val-city-radius', (v) => v],
-      ['range-city-stops', 'val-city-stops', (v) => v],
+      ['range-city-duration', 'val-city-duration', (v) => v],
     ];
     bindings.forEach(([inputId, labelId, transform]) => {
       const input = document.getElementById(inputId);
@@ -233,6 +232,15 @@ const RPUi = (() => {
       default:
         break;
     }
+
+    // Le sélecteur "quel itinéraire ?" ne doit apparaître que si le groupe
+    // "nombre de parcours" est visible ET que l'utilisateur a choisi 1 seul
+    // itinéraire (relit la valeur réelle du select plutôt que de dupliquer
+    // cette logique dans chaque branche ci-dessus).
+    const singleTypeGroup = document.getElementById('single-route-type-field-group');
+    const routeCountSelect = document.getElementById('select-route-count');
+    const showSingleType = routeCountGroup.style.display !== 'none' && routeCountSelect.value === '1';
+    singleTypeGroup.style.display = showSingleType ? '' : 'none';
   }
 
   /** Sélecteur visuel du mode de déplacement pour la visite citadine (à pied / à vélo). */

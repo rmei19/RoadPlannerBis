@@ -50,12 +50,15 @@
 
 <!-- Bouton localisation flottant -->
 <button id="btn-locate" class="fab fab-locate" title="Me localiser" aria-label="Me localiser">
-  <svg viewBox="0 0 24 24" width="22" height="22"><path fill="currentColor" d="M12 8a4 4 0 100 8 4 4 0 000-8zm9-1h-2.06A6.99 6.99 0 0013 1.06V-1h-2v2.06A6.99 6.99 0 005.06 7H3v2h2.06A6.99 6.99 0 0011 15.94V18h2v-2.06A6.99 6.99 0 0018.94 9H21V7zM12 15a3 3 0 110-6 3 3 0 010 6z"/></svg>
+  <svg viewBox="0 0 24 24" width="22" height="22">
+    <path fill="#4285F4" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
+    <circle cx="12" cy="9" r="2.6" fill="#fff"/>
+  </svg>
 </button>
 
-<!-- Bouton bascule couches (fond de carte) -->
-<button id="btn-layers" class="fab fab-layers" title="Fond de carte" aria-label="Changer le fond de carte">
-  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M12 2 1 8l11 6 9-4.91V16h2V8L12 2zM3.5 13.09 12 18l8.5-4.91V16L12 20.5 3.5 16v-2.91z"/></svg>
+<!-- Bouton bascule couches (fond de carte) : icône "carte pliée", plus explicite qu'un pictogramme de calques abstrait -->
+<button id="btn-layers" class="fab fab-layers" title="Changer le fond de carte" aria-label="Changer le fond de carte">
+  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
 </button>
 
 <!-- Bouton bascule thème clair/sombre -->
@@ -164,10 +167,8 @@
       </div>
 
       <div class="field-group" id="city-tour-field-group" style="display:none;">
-        <label class="field-label" for="range-city-radius">Rayon de recherche : <span id="val-city-radius">3</span> km</label>
-        <input type="range" id="range-city-radius" min="1" max="8" step="0.5" value="3">
-        <label class="field-label" for="range-city-stops">Nombre d'arrêts souhaité : <span id="val-city-stops">6</span></label>
-        <input type="range" id="range-city-stops" min="3" max="12" step="1" value="6">
+        <label class="field-label" for="range-city-duration">Durée de visite souhaitée : <span id="val-city-duration">2</span> h</label>
+        <input type="range" id="range-city-duration" min="0.5" max="6" step="0.5" value="2">
         <label class="field-label">Déplacement</label>
         <div class="mode-grid city-tour-transport-grid" id="city-tour-transport-grid">
           <button type="button" class="mode-btn is-active" data-transport="foot">🚶 À pied</button>
@@ -177,7 +178,7 @@
           <option value="foot" selected>foot</option>
           <option value="bike">bike</option>
         </select>
-        <p class="field-hint">Recherche les monuments, musées, points de vue et sites remarquables via OpenStreetMap (Overpass), puis construit un itinéraire les reliant.</p>
+        <p class="field-hint" id="city-duration-hint">Recherche les monuments, musées, points de vue et sites remarquables via OpenStreetMap/Wikipédia, puis construit un itinéraire les reliant en visant cette durée totale (temps de trajet + temps sur place estimé).</p>
       </div>
 
       <div class="field-group">
@@ -206,6 +207,15 @@
           <option value="1" selected>1 itinéraire</option>
           <option value="2">2 itinéraires</option>
           <option value="3">3 itinéraires</option>
+        </select>
+      </div>
+
+      <div class="field-group" id="single-route-type-field-group">
+        <label class="field-label" for="select-single-route-type">Quel itinéraire ?</label>
+        <select id="select-single-route-type" class="select-input">
+          <option value="principal" selected>Itinéraire 1 — Direct (façon voiture)</option>
+          <option value="bis">Itinéraire 2 — Routes secondaires</option>
+          <option value="cyclable">Itinéraire 3 — Chemins autorisés</option>
         </select>
       </div>
 
