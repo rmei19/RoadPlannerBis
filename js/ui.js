@@ -126,6 +126,16 @@ const RPUi = (() => {
      Champs de critères (sliders avec valeur affichée, chips, modes)
      ====================================================================== */
 
+  /** Formate une durée en heures (float) en "15 min", "1 h", "1 h 30"... */
+  function formatCityDuration(hoursStr) {
+    const totalMinutes = Math.round(parseFloat(hoursStr) * 60);
+    const h = Math.floor(totalMinutes / 60);
+    const m = totalMinutes % 60;
+    if (h === 0) return `${m} min`;
+    if (m === 0) return `${h} h`;
+    return `${h} h ${String(m).padStart(2, '0')}`;
+  }
+
   function initCriteriaFields() {
     const bindings = [
       ['range-distance', 'val-distance', (v) => v],
@@ -134,7 +144,7 @@ const RPUi = (() => {
       ['range-major-roads', 'val-major-roads', (v) => v],
       ['range-lights', 'val-lights', (v) => v],
       ['range-speed', 'val-speed', (v) => v],
-      ['range-city-duration', 'val-city-duration', (v) => v],
+      ['range-city-duration', 'val-city-duration', formatCityDuration],
     ];
     bindings.forEach(([inputId, labelId, transform]) => {
       const input = document.getElementById(inputId);
@@ -295,9 +305,15 @@ const RPUi = (() => {
     emptyEl.hidden = true;
 
     routeResults.forEach((result) => {
-      const { def, stats, quality, visible, avgSpeedKmh } = result;
+      const { def, stats, quality, visible, avgSpeedKmh, pois } = result;
       const durationSeconds = (stats.distance / 1000 / avgSpeedKmh) * 3600;
       const engineLabel = stats.engine === 'brouter' ? 'via BRouter' : 'via OpenRouteService';
+      const poisListHtml = pois && pois.length
+        ? `<div class="route-poi-list">
+            <div class="route-poi-list-title">Lieux visités, dans l'ordre</div>
+            <ol>${pois.map((p) => `<li>${escapeHtml(p.name)} <span class="route-poi-category">${escapeHtml(p.categoryLabel || '')}</span></li>`).join('')}</ol>
+          </div>`
+        : '';
 
       const card = document.createElement('div');
       card.className = 'route-card';
@@ -343,6 +359,7 @@ const RPUi = (() => {
         </div>
 
         ${buildElevationProfileSvg(stats, def.colorHex)}
+        ${poisListHtml}
 
         <div class="route-actions">
           <button class="btn-export" data-format="gpx">GPX</button>

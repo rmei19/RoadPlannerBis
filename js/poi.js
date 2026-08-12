@@ -109,34 +109,62 @@ out body;`;
   }
 
   /**
-   * Secours si Overpass est entièrement indisponible : l'API de
-   * géolocalisation de Wikipédia (infrastructure Wikimedia, largement plus
-   * robuste que les miroirs communautaires Overpass). Moins de détail (pas
-   * de catégorie précise), mais chaque résultat est par nature un lieu
-   * notable puisqu'il possède un article Wikipédia.
+   * Secours si Overpass est entièrement indisponible, et source PRINCIPALE
+   * désormais (voir fetchPois) : l'API de recherche géographique de
+   * Wikipédia (infrastructure Wikimedia, largement plus robuste que les
+   * miroirs communautaires Overpass). Les catégories Wikipédia de chaque
+   * article sont récupérées pour en déduire un type de lieu pertinent (voir
+   * WIKI_CATEGORY_KEYWORDS ci-dessous), sans dépendre d'un système tiers
+   * supplémentaire (Wikidata/SPARQL) à faire fonctionner.
    */
+  const WIKI_CATEGORY_KEYWORDS = [
+    [/mus[ée]e/i, 'Musée'],
+    [/(église|cathédrale|basilique|chapelle|abbaye|couvent|temple|synagogue|mosquée|prieuré)/i, 'Édifice religieux'],
+    [/château/i, 'Château'],
+    [/(monument|mémorial|statue|sculpture)/i, 'Monument'],
+    [/(parc|jardin)/i, 'Parc / jardin'],
+    [/(point de vue|panorama|belvédère)/i, 'Point de vue'],
+    [/(pont)/i, 'Pont remarquable'],
+    [/(théâtre|opéra)/i, 'Théâtre / opéra'],
+    [/(fontaine)/i, 'Fontaine'],
+    [/(place|halle|marché couvert)/i, 'Place / halle'],
+  ];
+
+  function categoryLabelFromWikiCategories(categories) {
+    const titles = (categories || []).map((c) => c.title || '');
+    for (const [pattern, label] of WIKI_CATEGORY_KEYWORDS) {
+      if (titles.some((t) => pattern.test(t))) return label;
+    }
+    return 'Lieu notable';
+  }
+
   async function fetchPoisFromWikipedia([lat, lng], radiusMeters) {
     const params = new URLSearchParams({
       action: 'query',
-      list: 'geosearch',
-      gscoord: `${lat}|${lng}`,
-      gsradius: String(Math.min(10000, Math.round(radiusMeters))), // limite API : 10 km max
-      gslimit: '50',
+      generator: 'geosearch',
+      ggscoord: `${lat}|${lng}`,
+      ggsradius: String(Math.min(10000, Math.round(radiusMeters))), // limite API : 10 km max
+      ggslimit: '50',
+      prop: 'coordinates|categories',
+      cllimit: '20',
+      clshow: '!hidden',
       format: 'json',
       origin: '*', // active le CORS côté API Wikipédia
     });
     const res = await RPUtils.fetchWithTimeout(`${WIKIPEDIA_GEOSEARCH_URL}?${params.toString()}`, {}, 10000);
     if (!res.ok) throw new Error(`Wikipédia a répondu ${res.status}`);
     const data = await res.json();
-    const results = data?.query?.geosearch || [];
-    return results.map((r) => ({
-      lat: r.lat,
-      lng: r.lon,
-      name: r.title,
-      category: 'wikipedia',
-      categoryLabel: 'Lieu notable (Wikipédia)',
-      notable: true,
-    }));
+    const pages = data?.query?.pages ? Object.values(data.query.pages) : [];
+    return pages
+      .filter((p) => p.coordinates && p.coordinates.length)
+      .map((p) => ({
+        lat: p.coordinates[0].lat,
+        lng: p.coordinates[0].lon,
+        name: p.title,
+        category: 'wikipedia',
+        categoryLabel: categoryLabelFromWikiCategories(p.categories),
+        notable: true,
+      }));
   }
 
   /**
