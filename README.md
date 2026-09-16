@@ -91,3 +91,11 @@ RoadPlanner/
 - Les statistiques "% pistes cyclables" / "% petites routes" / "grandes routes traversées" ne sont disponibles qu'avec le moteur OpenRouteService (BRouter ne fournit pas cette classification par type de voie).
 - L'export FIT utilise un encodeur binaire minimal (messages `file_id`/`course`/`lap`/`record`) : fonctionnel mais non testé sur tous les modèles d'appareils.
 - Le nombre de feux tricolores n'est pas calculé (non exposé par les API de routage utilisées).
+
+## Version 2.2.1 — Tempo Routes
+
+- Clique sur **Tempo** pour ouvrir le menu de la suite ; le bouton thème alterne système, clair et sombre.
+- Dans « Points de passage », utilise **+ avant** pour insérer le prochain point (carte ou recherche) à cet emplacement ; les flèches réordonnent les étapes. Les points restent dans cet ordre même avec les détours du mode A→B.
+- Pour les boucles, choisis une direction initiale et, si souhaité, coche « Écarter les boucles qui empruntent deux fois le même tronçon ». En l'absence de boucle satisfaisante après cinq essais, aucun tracé répété n'est présenté comme valide. Cela ne coupe pas automatiquement un aller-retour, car un tel découpage déplacerait le départ ou supprimerait l'arrivée.
+- La clé ORS précédemment encodée a été retirée : un code servi par GitHub Pages est lisible par tous. Révoque l'ancienne clé publiée dans le tableau de bord ORS, puis colle une nouvelle clé dans Critères sur chaque appareil qui en a besoin. Elle reste dans le stockage local du navigateur, accessible au JavaScript de ce site. Le routage automatique sans clé utilise BRouter.
+- Après publication, rafraîchis l'application installée pour activer le cache 2.2.1.

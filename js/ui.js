@@ -202,6 +202,7 @@ const RPUi = (() => {
     const detourGroup = document.getElementById('detour-field-group');
     const cityTourGroup = document.getElementById('city-tour-field-group');
     const routeCountGroup = document.getElementById('route-count-field-group');
+    document.getElementById('loop-direction-group').hidden = mode !== 'loop' && mode !== 'random-loop';
     switch (mode) {
       case 'point-to-point':
         endGroup.style.display = '';
@@ -274,7 +275,7 @@ const RPUi = (() => {
      Liste des points de passage
      ====================================================================== */
 
-  function renderWaypointsList(waypoints, onRemove) {
+  function renderWaypointsList(waypoints, onRemove, onMove, onInsert) {
     const list = document.getElementById('waypoints-list');
     list.innerHTML = '';
     waypoints.forEach((wp, i) => {
@@ -283,8 +284,14 @@ const RPUi = (() => {
       li.innerHTML = `
         <span class="wp-index">${i + 1}</span>
         <span class="wp-label">${escapeHtml(wp.label)}</span>
-        <button class="wp-remove" aria-label="Retirer ce point">✕</button>`;
+        <button type="button" class="wp-action" data-action="insert" aria-label="Insérer un point avant le point ${i + 1}" title="Insérer avant">+ avant</button>
+        <button type="button" class="wp-action" data-action="up" aria-label="Monter le point ${i + 1}" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button type="button" class="wp-action" data-action="down" aria-label="Descendre le point ${i + 1}" ${i === waypoints.length - 1 ? 'disabled' : ''}>↓</button>
+        <button type="button" class="wp-remove" aria-label="Retirer ce point">✕</button>`;
       li.querySelector('.wp-remove').addEventListener('click', () => onRemove(i));
+      li.querySelector('[data-action=up]').addEventListener('click', () => onMove(i, i - 1));
+      li.querySelector('[data-action=down]').addEventListener('click', () => onMove(i, i + 1));
+      li.querySelector('[data-action=insert]').addEventListener('click', () => onInsert(i));
       list.appendChild(li);
     });
   }

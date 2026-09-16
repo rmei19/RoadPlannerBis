@@ -135,6 +135,8 @@ const RPProfiles = (() => {
       toleranceRatio: (parseFloat(getVal('range-tolerance')) || 10) / 100,
       elevationTarget: parseFloat(getVal('range-elevation')) || 1000,
       relief: getVal('select-relief') || 'rolling',
+      loopDirection: getVal('select-loop-direction') || 'random',
+      avoidOverlap: document.getElementById('chk-avoid-overlap')?.checked || false,
       maxMajorRoads: parseInt(getVal('range-major-roads'), 10) || 0,
       maxLights: parseInt(getVal('range-lights'), 10) || 0,
       avgSpeedKmh: parseFloat(getVal('range-speed')) || 27,

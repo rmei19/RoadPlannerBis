@@ -15,11 +15,12 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.1';
+  const APP_VERSION = '2.2.1';
 
   const state = {
     start: null,       // { lat, lng, label }
     end: null,         // { lat, lng, label }
+    insertionIndex: null,
     waypoints: [],      // [{ lat, lng, label }]
     mode: 'point-to-point',
     results: [],        // dernier jeu de résultats [{ def, stats, quality, visible }]
@@ -46,6 +47,7 @@
     // les autres démarrent quand même — la carte, en particulier, ne doit
     // jamais rester bloquée à cause d'un bouton annexe manquant ailleurs.
     safeInit('theme', initTheme);
+    safeInit('suite Tempo', initSuiteMenu);
     safeInit('diagnostic éléments masqués', diagnoseHiddenElements);
     safeInit('bandeau protocole', checkProtocolWarning);
     safeInit('panneau de diagnostic', wireDebugPanelToggle);
@@ -304,12 +306,12 @@
     clearStartBtn.addEventListener('click', () => {
       inputStart.value = '';
       inputStart.dispatchEvent(new Event('input'));
-      inputStart.focus();
+      inputStart.blur();
     });
     clearEndBtn.addEventListener('click', () => {
       inputEnd.value = '';
       inputEnd.dispatchEvent(new Event('input'));
-      inputEnd.focus();
+      inputEnd.blur();
     });
 
     // Etat initial des boutons (utile si le champ est prérempli au chargement)
@@ -349,7 +351,17 @@
   async function addWaypointPoint(latlng, label) {
     const finalLabel = label || await RPGeocoder.reverseGeocode(latlng);
     const marker = RPMap.addWaypointMarker(latlng);
-    state.waypoints.push({ lat: latlng[0], lng: latlng[1], label: finalLabel, marker });
+    const index = state.insertionIndex === null ? state.waypoints.length : Math.min(state.insertionIndex, state.waypoints.length);
+    state.waypoints.splice(index, 0, { lat: latlng[0], lng: latlng[1], label: finalLabel, marker });
+    state.insertionIndex = null;
+    marker.on('dragend', async () => {
+      const pos = marker.getLatLng();
+      const wp = state.waypoints.find((entry) => entry.marker === marker);
+      if (!wp) return;
+      wp.lat = pos.lat; wp.lng = pos.lng;
+      wp.label = await RPGeocoder.reverseGeocode([pos.lat, pos.lng]);
+      refreshWaypointsList();
+    });
     refreshWaypointsList();
   }
 
@@ -439,7 +451,20 @@
       const removed = state.waypoints.splice(index, 1)[0];
       if (removed?.marker) RPMap.removeWaypointMarker(removed.marker);
       refreshWaypointsList();
+    }, (from, to) => {
+      if (to < 0 || to >= state.waypoints.length) return;
+      state.waypoints.splice(to, 0, state.waypoints.splice(from, 1)[0]);
+      state.insertionIndex = null;
+      refreshWaypointsList();
+    }, (index) => {
+      state.insertionIndex = index;
+      refreshWaypointsList();
+      document.getElementById('input-waypoint').focus();
     });
+    const hint = document.getElementById('waypoint-insertion-hint');
+    hint.textContent = state.insertionIndex === null
+      ? 'Le prochain point sera ajouté à la fin.'
+      : `Le prochain point sera inséré avant le point ${state.insertionIndex + 1}.`;
   }
 
   /* ======================================================================
@@ -470,28 +495,48 @@
     document.getElementById('btn-theme').addEventListener('click', toggleTheme);
   }
 
-  /** Applique le thème sombre (défaut) ou clair sur <html>, met à jour l'icône, et sauvegarde le choix. */
-  function applyTheme(theme) {
-    document.documentElement.setAttribute('data-theme', theme);
-    document.getElementById('icon-theme-dark').hidden = theme === 'light';
-    document.getElementById('icon-theme-light').hidden = theme !== 'light';
-    RPUtils.storage.set('rp_theme', theme);
+  function initSuiteMenu() {
+    const toggle = document.getElementById('suite-toggle');
+    const menu = document.getElementById('suite-menu');
+    toggle.addEventListener('click', () => {
+      menu.hidden = !menu.hidden;
+      toggle.setAttribute('aria-expanded', String(!menu.hidden));
+    });
+    document.addEventListener('click', (event) => {
+      if (!event.target.closest('#suite-switcher')) {
+        menu.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+      }
+    });
+    document.addEventListener('keydown', (event) => {
+      if (event.key === 'Escape') { menu.hidden = true; toggle.setAttribute('aria-expanded', 'false'); }
+    });
+  }
+
+  /** Trois choix explicites ; « système » suit automatiquement les changements du téléphone. */
+  function applyTheme(preference) {
+    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
+    const resolved = preference === 'system' ? (prefersLight ? 'light' : 'dark') : preference;
+    document.documentElement.setAttribute('data-theme', resolved);
+    document.getElementById('icon-theme-dark').hidden = resolved === 'light';
+    document.getElementById('icon-theme-light').hidden = resolved !== 'light';
+    const button = document.getElementById('btn-theme');
+    button.title = `Thème : ${preference === 'system' ? 'système' : preference}. Toucher pour changer.`;
+    button.setAttribute('aria-label', button.title);
+    RPUtils.storage.set('rp_theme', preference);
   }
 
   function toggleTheme() {
-    const current = document.documentElement.getAttribute('data-theme') === 'light' ? 'light' : 'dark';
-    applyTheme(current === 'light' ? 'dark' : 'light');
+    const current = RPUtils.storage.get('rp_theme', 'system');
+    applyTheme(current === 'system' ? 'light' : current === 'light' ? 'dark' : 'system');
   }
 
-  /** Thème initial : préférence sauvegardée, sinon préférence système, sinon sombre par défaut. */
   function initTheme() {
-    const saved = RPUtils.storage.get('rp_theme', null);
-    if (saved === 'light' || saved === 'dark') {
-      applyTheme(saved);
-      return;
-    }
-    const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
-    applyTheme(prefersLight ? 'light' : 'dark');
+    const saved = RPUtils.storage.get('rp_theme', 'system');
+    applyTheme(['system', 'light', 'dark'].includes(saved) ? saved : 'system');
+    window.matchMedia?.('(prefers-color-scheme: light)').addEventListener?.('change', () => {
+      if (RPUtils.storage.get('rp_theme', 'system') === 'system') applyTheme('system');
+    });
   }
 
   /* ======================================================================

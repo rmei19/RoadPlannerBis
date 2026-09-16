@@ -22,7 +22,7 @@ const RPLoops = (() => {
    * périmètre théorique correspond à la distance souhaitée, centré sur
    * un décalage par rapport au départ (pour ne pas repartir plein centre).
    */
-  function generateLoopWaypoints(startLatLng, distanceKm, { vertices = 6, seed = null, relief = 'rolling' } = {}) {
+  function generateLoopWaypoints(startLatLng, distanceKm, { vertices = 6, seed = null, relief = 'rolling', direction = 'random' } = {}) {
     const rng = seed != null ? mulberry32(seed) : Math.random;
 
     // Rayon approximatif d'un polygone régulier de périmètre = distanceKm
@@ -50,7 +50,9 @@ const RPLoops = (() => {
     // variation = plus de dénivelé probable en zone vallonnée/montagneuse)
     const reliefJitter = { flat: 0.05, rolling: 0.15, hilly: 0.25, mountain: 0.35 }[relief] || 0.15;
 
-    const startBearing = rng() * 360;
+    const headings = { north: 0, east: 90, south: 180, west: 270 };
+    // Le premier sommet suit la direction choisie (tolérance aux rues gérée par le routeur).
+    const startBearing = direction in headings ? headings[direction] - 360 / n : rng() * 360;
     const points = [];
     for (let i = 1; i < n; i += 1) {
       const bearing = (startBearing + (i * 360) / n) % 360;
@@ -62,10 +64,10 @@ const RPLoops = (() => {
   }
 
   /** Boucle aléatoire : mêmes principes, mais graine et nombre de sommets tirés aléatoirement à chaque appel. */
-  function generateRandomLoopWaypoints(startLatLng, distanceKm, relief) {
+  function generateRandomLoopWaypoints(startLatLng, distanceKm, relief, direction = 'random') {
     const vertices = 6 + Math.floor(Math.random() * 4); // 6 à 9 sommets
     const seed = Math.floor(Math.random() * 1e9);
-    return generateLoopWaypoints(startLatLng, distanceKm, { vertices, seed, relief });
+    return generateLoopWaypoints(startLatLng, distanceKm, { vertices, seed, relief, direction });
   }
 
   /** Petit générateur pseudo-aléatoire à graine (déterministe), pour pouvoir reproduire une boucle si besoin. */
@@ -165,7 +167,7 @@ const RPLoops = (() => {
    * maxAttempts et renvoie la dernière tentative telle quelle (avec un
    * avertissement dans le journal) plutôt que de bloquer la génération.
    */
-  async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5) {
+  async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5, requireUniqueRoads = false) {
     let lastCoords = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const loopPts = generatorFn();
@@ -186,9 +188,11 @@ const RPLoops = (() => {
         // Si même l'aperçu échoue (réseau, etc.), on ne bloque pas la
         // génération pour autant : on renvoie les coordonnées telles quelles.
         RPUtils.debugLog(`Aperçu de boucle impossible à valider (${err.message}), poursuite sans validation.`, 'warn');
+        if (requireUniqueRoads) throw new Error('La vérification de la boucle sans tronçon répété est indisponible ; réessaie plus tard ou désactive cette option.');
         return coords;
       }
     }
+    if (requireUniqueRoads) throw new Error('Aucune boucle sans tronçon répété trouvée en cinq essais. Change la distance, la direction ou désactive cette option.');
     RPUtils.debugLog(`Aucune boucle sans aller-retour trouvée après ${maxAttempts} tentatives, utilisation de la dernière forme générée.`, 'warn');
     return lastCoords;
   }
@@ -202,13 +206,13 @@ const RPLoops = (() => {
     if (mode === 'random-loop') {
       return buildValidatedLoopCoordinates(
         start, criteria.distanceKm, criteria.relief,
-        () => generateRandomLoopWaypoints(start, criteria.distanceKm, criteria.relief),
-        brouterProfile
+        () => generateRandomLoopWaypoints(start, criteria.distanceKm, criteria.relief, criteria.loopDirection),
+        brouterProfile, 5, criteria.avoidOverlap
       );
     }
     return buildValidatedLoopCoordinates(
       start, criteria.distanceKm, criteria.relief,
-      () => generateLoopWaypoints(start, criteria.distanceKm, { relief: criteria.relief }),
+      () => generateLoopWaypoints(start, criteria.distanceKm, { relief: criteria.relief, direction: criteria.loopDirection }),
       brouterProfile
     );
   }
@@ -256,8 +260,22 @@ const RPLoops = (() => {
       case 'point-to-point': {
         if (!end) throw new Error('Veuillez renseigner un point d\'arrivée.');
         if (detour?.enabled && detour.targetDistanceKm > 0) {
+          const anchors = [start, ...waypoints, end];
           const detourPts = generateDetourWaypoints(start, end, detour.targetDistanceKm);
-          return [start, ...detourPts, ...waypoints, end];
+          // Assign each generated detour to the closest A→B interval; keep user anchors fixed.
+          const bins = Array.from({ length: anchors.length - 1 }, () => []);
+          for (const point of detourPts) {
+            let best = 0, closest = Infinity;
+            for (let i = 0; i < bins.length; i += 1) {
+              const a = anchors[i], b = anchors[i + 1];
+              const da = RPUtils.haversineDistance(a, point);
+              const db = RPUtils.haversineDistance(b, point);
+              const score = da + db - RPUtils.haversineDistance(a, b);
+              if (score < closest) { closest = score; best = i; }
+            }
+            bins[best].push(point);
+          }
+          return anchors.flatMap((anchor, i) => i < bins.length ? [anchor, ...bins[i]] : [anchor]);
         }
         return [start, ...waypoints, end];
       }
