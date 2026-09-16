@@ -2,7 +2,7 @@
 
 set -e
 
-clear
+if [ -t 1 ]; then clear; fi
 
 echo "=================================================="
 echo "        🚀 Publication GitHub Pages"
@@ -34,30 +34,26 @@ echo ""
 # Ajout des fichiers
 git add .
 
-# Vérifie qu'il y a quelque chose à envoyer
+# Ne crée un commit que si des fichiers ont changé. Le push doit aussi
+# envoyer les commits déjà créés, même si le dossier de travail est propre.
 if git diff --cached --quiet; then
-    echo "ℹ️  Aucune modification détectée."
-    exit 0
+    echo "ℹ️  Aucun nouveau fichier à committer. Vérification des commits à envoyer..."
+else
+    echo "=================================================="
+    echo "📝 Modifications qui seront envoyées"
+    echo "=================================================="
+    git status --short
+    echo ""
+    echo "Résumé :"
+    git diff --cached --stat
+    echo ""
+    DEFAULT="Mise à jour du $(date '+%d/%m/%Y à %H:%M')"
+    read -r -p "Message du commit [$DEFAULT] : " MESSAGE
+    MESSAGE=${MESSAGE:-$DEFAULT}
+    echo ""
+    echo "💾 Création du commit..."
+    git commit -m "$MESSAGE"
 fi
-
-echo "=================================================="
-echo "📝 Modifications qui seront envoyées"
-echo "=================================================="
-
-git status --short
-
-echo ""
-echo "Résumé :"
-git diff --cached --stat
-
-echo ""
-DEFAULT="Mise à jour du $(date '+%d/%m/%Y à %H:%M')"
-read -p "Message du commit [$DEFAULT] : " MESSAGE
-MESSAGE=${MESSAGE:-$DEFAULT}
-
-echo ""
-echo "💾 Création du commit..."
-git commit -m "$MESSAGE"
 
 echo ""
 echo "☁️  Envoi sur GitHub..."

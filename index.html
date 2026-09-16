@@ -49,7 +49,7 @@
 <div id="map"></div>
 
 <div class="suite-switcher" id="suite-switcher">
-  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.2.1</span> ▾</button>
+  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.3.0</span> ▾</button>
   <nav id="suite-menu" class="suite-menu" aria-label="Applications Tempo" hidden>
     <a href="https://octopi.tail2fca2d.ts.net:8443/">Tempo · Agenda</a>
     <a href="https://rmei19.github.io/GPXStravaLike/">Tempo · Traces</a>
@@ -182,8 +182,8 @@
           <option value="random">Aléatoire</option><option value="north">Nord</option>
           <option value="east">Est</option><option value="south">Sud</option><option value="west">Ouest</option>
         </select>
-        <p class="field-hint">La direction guide le premier point ; les routes disponibles peuvent infléchir le départ réel.</p>
-        <label class="field-label" for="chk-avoid-overlap"><input type="checkbox" id="chk-avoid-overlap"> Écarter les boucles qui empruntent deux fois le même tronçon</label>
+        <p class="field-hint">La boucle est placée dans cette direction. Si les routes imposent un grand détour inverse, elle sera rejetée.</p>
+        <label class="field-label" for="chk-avoid-overlap"><input type="checkbox" id="chk-avoid-overlap" checked> Écarter les boucles qui empruntent deux fois le même tronçon</label>
         <p class="field-hint">Si aucune boucle sans portion commune n’est trouvée après cinq essais, le calcul s’arrête et propose de changer les critères. Ne s’applique pas au mode aller-retour.</p>
       </div>
 

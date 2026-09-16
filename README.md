@@ -99,3 +99,7 @@ RoadPlanner/
 - Pour les boucles, choisis une direction initiale et, si souhaité, coche « Écarter les boucles qui empruntent deux fois le même tronçon ». En l'absence de boucle satisfaisante après cinq essais, aucun tracé répété n'est présenté comme valide. Cela ne coupe pas automatiquement un aller-retour, car un tel découpage déplacerait le départ ou supprimerait l'arrivée.
 - La clé ORS précédemment encodée a été retirée : un code servi par GitHub Pages est lisible par tous. Révoque l'ancienne clé publiée dans le tableau de bord ORS, puis colle une nouvelle clé dans Critères sur chaque appareil qui en a besoin. Elle reste dans le stockage local du navigateur, accessible au JavaScript de ce site. Le routage automatique sans clé utilise BRouter.
 - Après publication, rafraîchis l'application installée pour activer le cache 2.2.1.
+
+## Version 2.3.0 — Boucles orientées
+
+Le polygone est désormais placé dans la direction choisie (le départ est en bordure de la boucle). Un aperçu BRouter vérifie la direction et les branches redondantes, puis le tracé final ORS/BRouter est revérifié avant affichage. L'option « Écarter les boucles qui empruntent deux fois le même tronçon » est activée par défaut ; un réseau de routes trop contraint peut empêcher de générer un parcours, auquel cas changer la distance, le cap ou désactiver l'option. La clé ORS partagée reste identique.

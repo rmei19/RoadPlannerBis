@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.2.1';
+  const APP_VERSION = '2.3.0';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -741,15 +741,25 @@
           const baseOptions = def.buildOptions(criteria);
           const options = RPProfiles.applyUserPreferences(baseOptions, criteria);
 
-          let coordinates = sharedCoordinates;
-          if (isLoopMode) {
-            RPUi.setLoading(true, `Vérification de la forme — itinéraire "${def.name}"…`, handleCancelGenerate);
-            coordinates = await RPLoops.buildLoopCoordinatesForRoute(state.mode, startLatLng, criteria, options.brouterProfile);
-            if (generationCancelled) { RPUtils.debugLog('Génération annulée pendant la vérification de la boucle.', 'warn'); break; }
-            RPUi.setLoading(true, `Calcul de ${routeDefs.length} parcours en cours…`, handleCancelGenerate);
+          let stats = null;
+          const finalAttempts = isLoopMode ? 2 : 1;
+          for (let attempt = 1; attempt <= finalAttempts; attempt += 1) {
+            let coordinates = sharedCoordinates;
+            if (isLoopMode) {
+              RPUi.setLoading(true, `Vérification de la forme — itinéraire "${def.name}"…`, handleCancelGenerate);
+              coordinates = await RPLoops.buildLoopCoordinatesForRoute(state.mode, startLatLng, criteria, options.brouterProfile);
+              if (generationCancelled) break;
+              RPUi.setLoading(true, `Calcul de ${routeDefs.length} parcours en cours…`, handleCancelGenerate);
+            }
+            const candidate = await RPRouting.computeRoute(coordinates, def, options, criteria);
+            const check = isLoopMode
+              ? RPLoops.validateLoopRoute(candidate.latlngs, startLatLng, criteria.loopDirection, criteria.avoidOverlap)
+              : { ok: true };
+            if (check.ok) { stats = candidate; break; }
+            RPUtils.debugLog(`Résultat routé refusé (essai ${attempt}/${finalAttempts}) : ${check.reason}`, 'warn');
+            if (attempt === finalAttempts) throw new Error(`${check.reason} Essaie une autre direction ou adapte la distance.`);
           }
-
-          const stats = await RPRouting.computeRoute(coordinates, def, options, criteria);
+          if (generationCancelled || !stats) break;
           const ms = Math.round(performance.now() - t0);
           RPUtils.debugLog(`Profil "${def.name}" : réponse reçue en ${ms} ms (${Math.round(stats.distance)} m).`, 'ok');
           const quality = RPRouting.estimateQuality(stats, criteria, def.id);

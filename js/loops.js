@@ -51,14 +51,16 @@ const RPLoops = (() => {
     const reliefJitter = { flat: 0.05, rolling: 0.15, hilly: 0.25, mountain: 0.35 }[relief] || 0.15;
 
     const headings = { north: 0, east: 90, south: 180, west: 270 };
-    // Le premier sommet suit la direction choisie (tolérance aux rues gérée par le routeur).
-    const startBearing = direction in headings ? headings[direction] - 360 / n : rng() * 360;
+    const heading = Object.hasOwn(headings, direction) ? headings[direction] : rng() * 360;
+    // Le départ est sur le bord OUEST d'une boucle orientée EST (idem pour
+    // les autres caps), et non plus au centre du polygone. C'est la différence
+    // entre « premier point vers l'est » et « boucle située à l'est ».
+    const center = RPUtils.destinationPoint(startLatLng, radiusM, heading);
     const points = [];
     for (let i = 1; i < n; i += 1) {
-      const bearing = (startBearing + (i * 360) / n) % 360;
+      const bearing = (heading + 180 + i * 360 / n) % 360;
       const jitter = 1 + (rng() * 2 - 1) * reliefJitter;
-      const r = radiusM * jitter;
-      points.push(RPUtils.destinationPoint(startLatLng, r, bearing));
+      points.push(RPUtils.destinationPoint(center, radiusM * jitter, bearing));
     }
     return points;
   }
@@ -156,6 +158,34 @@ const RPLoops = (() => {
     return false;
   }
 
+  /** Évalue le tracé routé, pas seulement les points théoriques.
+   * Tolère un court détour au départ ; écarte une grande branche à l'opposé
+   * de la direction demandée. Une route sans géométrie suffisante n'est pas
+   * validée silencieusement.
+   */
+  function validateLoopRoute(latlngs, start, direction, avoidOverlap = false) {
+    if (!Array.isArray(latlngs) || latlngs.length < 2) return { ok: false, reason: 'Tracé incomplet.' };
+    const bearing = { north: 0, east: 90, south: 180, west: 270 }[direction];
+    if (bearing !== undefined) {
+      const phi = bearing * Math.PI / 180;
+      const latScale = 111195, lngScale = latScale * Math.cos(start[0] * Math.PI / 180);
+      let forward = 0, backward = 0;
+      for (const point of latlngs) {
+        const projection = ((point[1] - start[1]) * lngScale) * Math.sin(phi)
+          + ((point[0] - start[0]) * latScale) * Math.cos(phi);
+        forward = Math.max(forward, projection);
+        backward = Math.max(backward, -projection);
+      }
+      if (forward < 1500 || backward > Math.max(1800, forward * 0.35)) {
+        return { ok: false, reason: `Le tracé s'éloigne trop dans la direction opposée (${Math.round(backward / 1000)} km).` };
+      }
+    }
+    if (avoidOverlap && hasSignificantSelfOverlap(latlngs)) {
+      return { ok: false, reason: 'Le trajet repasse sur un long tronçon déjà emprunté.' };
+    }
+    return { ok: true };
+  }
+
   /**
    * Génère des points de boucle, valide leur forme réelle via un calcul
    * BRouter rapide AVEC LE PROFIL PROPRE À CET ITINÉRAIRE (pas un profil
@@ -167,7 +197,7 @@ const RPLoops = (() => {
    * maxAttempts et renvoie la dernière tentative telle quelle (avec un
    * avertissement dans le journal) plutôt que de bloquer la génération.
    */
-  async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5, requireUniqueRoads = false) {
+  async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5, requireUniqueRoads = false, direction = 'random') {
     let lastCoords = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const loopPts = generatorFn();
@@ -179,20 +209,21 @@ const RPLoops = (() => {
         // itinéraire ; le vrai calcul (ORS ou BRouter selon le moteur choisi)
         // se fait séparément juste après, sur ces mêmes coordonnées.
         const preview = await RPRouting.computeRoute(coords, { name: 'aperçu boucle' }, { profile: brouterProfile, brouterProfile }, { routingEngine: 'brouter' });
-        if (!hasSignificantSelfOverlap(preview.latlngs)) {
+        const check = validateLoopRoute(preview.latlngs, start, direction, requireUniqueRoads);
+        if (check.ok) {
           if (attempt > 1) RPUtils.debugLog(`Boucle valide obtenue après ${attempt} tentative(s).`, 'ok');
           return coords;
         }
-        RPUtils.debugLog(`Tentative ${attempt}/${maxAttempts} : le tracé repasse trop sur lui-même (aller-retour ou tronçon partagé), nouvel essai…`, 'warn');
+        RPUtils.debugLog(`Tentative ${attempt}/${maxAttempts} : ${check.reason} Nouvel essai…`, 'warn');
       } catch (err) {
         // Si même l'aperçu échoue (réseau, etc.), on ne bloque pas la
         // génération pour autant : on renvoie les coordonnées telles quelles.
         RPUtils.debugLog(`Aperçu de boucle impossible à valider (${err.message}), poursuite sans validation.`, 'warn');
-        if (requireUniqueRoads) throw new Error('La vérification de la boucle sans tronçon répété est indisponible ; réessaie plus tard ou désactive cette option.');
+        // Le tracé final sera contrôlé après routage ORS/BRouter dans app.js.
         return coords;
       }
     }
-    if (requireUniqueRoads) throw new Error('Aucune boucle sans tronçon répété trouvée en cinq essais. Change la distance, la direction ou désactive cette option.');
+    if (requireUniqueRoads || direction !== 'random') throw new Error('Aucune boucle respectant la direction et sans tronçon répété trouvée en cinq essais. Change la distance, le cap ou les critères.');
     RPUtils.debugLog(`Aucune boucle sans aller-retour trouvée après ${maxAttempts} tentatives, utilisation de la dernière forme générée.`, 'warn');
     return lastCoords;
   }
@@ -207,7 +238,7 @@ const RPLoops = (() => {
       return buildValidatedLoopCoordinates(
         start, criteria.distanceKm, criteria.relief,
         () => generateRandomLoopWaypoints(start, criteria.distanceKm, criteria.relief, criteria.loopDirection),
-        brouterProfile, 5, criteria.avoidOverlap
+        brouterProfile, 5, criteria.avoidOverlap, criteria.loopDirection
       );
     }
     return buildValidatedLoopCoordinates(
@@ -297,5 +328,5 @@ const RPLoops = (() => {
     }
   }
 
-  return { generateLoopWaypoints, generateRandomLoopWaypoints, generateDetourWaypoints, buildCoordinatesForMode, buildLoopCoordinatesForRoute };
+  return { generateLoopWaypoints, generateRandomLoopWaypoints, generateDetourWaypoints, buildCoordinatesForMode, buildLoopCoordinatesForRoute, validateLoopRoute };
 })();
