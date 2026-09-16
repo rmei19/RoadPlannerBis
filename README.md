@@ -103,3 +103,7 @@ RoadPlanner/
 ## Version 2.3.0 — Boucles orientées
 
 Le polygone est désormais placé dans la direction choisie (le départ est en bordure de la boucle). Un aperçu BRouter vérifie la direction et les branches redondantes, puis le tracé final ORS/BRouter est revérifié avant affichage. L'option « Écarter les boucles qui empruntent deux fois le même tronçon » est activée par défaut ; un réseau de routes trop contraint peut empêcher de générer un parcours, auquel cas changer la distance, le cap ou désactiver l'option. La clé ORS partagée reste identique.
+
+## Version 2.4.0 — Antennes à couper
+
+Sur les boucles générées, une portion aller-retour reconnue sur la même voie apparaît en violet. Appuyer sur les tirets violets de la carte ou sur le bouton de la fiche de parcours pour retirer cette seule antenne. La détection vérifie le chemin aller et le retour le long du trajet : une boucle qui repasse près de son départ ne suffit pas à déclencher une coupe. Le mode Aller-retour volontaire reste intact. Après la coupe, carte, distance, durée, profil altimétrique et exports GPX/TCX/FIT portent sur le même trajet. Les anciennes statistiques détaillées de voirie ORS sont affichées « N/D » après une coupe car elles ne correspondent plus au parcours raccourci.

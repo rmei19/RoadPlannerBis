@@ -796,3 +796,9 @@ body.has-protocol-warning .fab { margin-top: 44px; }
 @media(max-width:420px) { .waypoint-item { gap: 3px; padding: 5px; } .wp-action { font-size: 11px; min-width: 28px; } .waypoint-item .wp-label { min-width: 0; } }
 
 @media(min-width:768px) { .suite-switcher { left: auto; right: 16px; } }
+
+/* Portions aller-retour éditables, en violet comme dans RunPlanner. */
+.route-overlap-note { padding: 10px; margin: 10px 0; border: 1px solid #9546c9; border-radius: 9px; color: var(--color-text); font-size: 13px; line-height: 1.5; }
+.route-trim-btn { display: inline-block; margin: 5px 5px 0 0; padding: 8px 11px; min-height: 42px; border: 1px solid #9546c9; border-radius: 7px; background: var(--color-surface-alt); color: var(--color-text); cursor: pointer; }
+.route-trim-btn:hover { background: #9546c9; }
+.route-trim-map-btn { display: block; padding: 11px; border: 0; border-radius: 8px; background: #8736bd; color: #fff; font: 600 14px var(--font-body); cursor: pointer; min-height: 44px; }

@@ -300,7 +300,7 @@ const RPUi = (() => {
      Cartes de résultats
      ====================================================================== */
 
-  function renderResults(routeResults, { onToggleVisibility, onExport }) {
+  function renderResults(routeResults, { onToggleVisibility, onExport, onTrim }) {
     const emptyEl = document.getElementById('results-empty');
     const listEl = document.getElementById('results-list');
     listEl.innerHTML = '';
@@ -313,6 +313,7 @@ const RPUi = (() => {
 
     routeResults.forEach((result) => {
       const { def, stats, quality, visible, avgSpeedKmh, pois } = result;
+      const spurSegments = result.overlapSegments || [];
       const durationSeconds = (stats.distance / 1000 / avgSpeedKmh) * 3600;
       const engineLabel = stats.engine === 'brouter' ? 'via BRouter' : 'via OpenRouteService';
       const poisListHtml = pois && pois.length
@@ -366,6 +367,8 @@ const RPUi = (() => {
         </div>
 
         ${buildElevationProfileSvg(stats, def.colorHex)}
+        ${spurSegments.length ? `<div class="route-overlap-note">✂️ ${spurSegments.length} branche${spurSegments.length > 1 ? 's' : ''} parcourue${spurSegments.length > 1 ? 's' : ''} deux fois. Touche les tirets violets sur la carte ou coupe ici :
+          ${spurSegments.map((seg, i) => `<button type="button" class="route-trim-btn" data-segment="${i}">Couper ~${(seg.removedDistanceM / 1000).toFixed(1)} km</button>`).join('')}</div>` : ''}
         ${poisListHtml}
 
         <div class="route-actions">
@@ -376,6 +379,9 @@ const RPUi = (() => {
       `;
 
       card.querySelector('[data-action="toggle"]').addEventListener('click', () => onToggleVisibility(def.id));
+      card.querySelectorAll('.route-trim-btn').forEach((btn) => {
+        btn.addEventListener('click', () => onTrim(def.id, Number(btn.dataset.segment)));
+      });
       card.querySelectorAll('.btn-export').forEach((btn) => {
         btn.addEventListener('click', () => onExport(def.id, btn.dataset.format));
       });

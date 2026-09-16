@@ -49,7 +49,7 @@
 <div id="map"></div>
 
 <div class="suite-switcher" id="suite-switcher">
-  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.3.0</span> ▾</button>
+  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.4.0</span> ▾</button>
   <nav id="suite-menu" class="suite-menu" aria-label="Applications Tempo" hidden>
     <a href="https://octopi.tail2fca2d.ts.net:8443/">Tempo · Agenda</a>
     <a href="https://rmei19.github.io/GPXStravaLike/">Tempo · Traces</a>
@@ -184,7 +184,7 @@
         </select>
         <p class="field-hint">La boucle est placée dans cette direction. Si les routes imposent un grand détour inverse, elle sera rejetée.</p>
         <label class="field-label" for="chk-avoid-overlap"><input type="checkbox" id="chk-avoid-overlap" checked> Écarter les boucles qui empruntent deux fois le même tronçon</label>
-        <p class="field-hint">Si aucune boucle sans portion commune n’est trouvée après cinq essais, le calcul s’arrête et propose de changer les critères. Ne s’applique pas au mode aller-retour.</p>
+        <p class="field-hint">Après cinq essais, les petites antennes restantes sont signalées en violet et peuvent être coupées. Un aller-retour volontaire reste intact.</p>
       </div>
 
       <div class="field-group" id="city-tour-field-group" style="display:none;">
@@ -354,6 +354,7 @@
 <script src="js/geocoder.js"></script>
 <script src="js/profiles.js"></script>
 <script src="js/routing.js"></script>
+<script src="js/overlaps.js"></script>
 <script src="js/loops.js"></script>
 <script src="js/poi.js"></script>
 <script src="js/gpx.js"></script>

@@ -8,7 +8,7 @@
  * des itinéraires et dépasserait vite les quotas de stockage sur mobile.
  */
 
-const CACHE_NAME = 'roadplanner-bis-shell-2.3.0';
+const CACHE_NAME = 'roadplanner-bis-shell-2.4.0';
 
 const APP_SHELL = [
   './index.html',
@@ -21,6 +21,7 @@ const APP_SHELL = [
   './js/geocoder.js',
   './js/profiles.js',
   './js/routing.js',
+  './js/overlaps.js',
   './js/loops.js',
   './js/poi.js',
   './js/gpx.js',

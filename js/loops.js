@@ -180,8 +180,8 @@ const RPLoops = (() => {
         return { ok: false, reason: `Le tracé s'éloigne trop dans la direction opposée (${Math.round(backward / 1000)} km).` };
       }
     }
-    if (avoidOverlap && hasSignificantSelfOverlap(latlngs)) {
-      return { ok: false, reason: 'Le trajet repasse sur un long tronçon déjà emprunté.' };
+    if (avoidOverlap && hasSignificantSelfOverlap(latlngs) && !RPOverlaps.findSegments(latlngs).length) {
+      return { ok: false, reason: 'Le trajet repasse sur un long tronçon non découpable.' };
     }
     return { ok: true };
   }
@@ -199,6 +199,7 @@ const RPLoops = (() => {
    */
   async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5, requireUniqueRoads = false, direction = 'random') {
     let lastCoords = null;
+    let trimmableCoords = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const loopPts = generatorFn();
       const coords = [start, ...loopPts, start];
@@ -214,6 +215,8 @@ const RPLoops = (() => {
           if (attempt > 1) RPUtils.debugLog(`Boucle valide obtenue après ${attempt} tentative(s).`, 'ok');
           return coords;
         }
+        if (requireUniqueRoads && validateLoopRoute(preview.latlngs, start, direction, false).ok
+            && RPOverlaps.findSegments(preview.latlngs).length) trimmableCoords = coords;
         RPUtils.debugLog(`Tentative ${attempt}/${maxAttempts} : ${check.reason} Nouvel essai…`, 'warn');
       } catch (err) {
         // Si même l'aperçu échoue (réseau, etc.), on ne bloque pas la
@@ -223,6 +226,7 @@ const RPLoops = (() => {
         return coords;
       }
     }
+    if (trimmableCoords) return trimmableCoords;
     if (requireUniqueRoads || direction !== 'random') throw new Error('Aucune boucle respectant la direction et sans tronçon répété trouvée en cinq essais. Change la distance, le cap ou les critères.');
     RPUtils.debugLog(`Aucune boucle sans aller-retour trouvée après ${maxAttempts} tentatives, utilisation de la dernière forme générée.`, 'warn');
     return lastCoords;

@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.3.0';
+  const APP_VERSION = '2.4.0';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -592,6 +592,7 @@
     RPUtils.debugLog(`Visite citadine : durée souhaitée ${durationHours} h -> ~${stopCount} arrêts dans un rayon de ~${radiusKm.toFixed(1)} km (estimation).`, 'info');
 
     RPUi.setLoading(true, 'Recherche des points d\'intérêt à proximité…', handleCancelGenerate);
+    clearOverlapHighlights();
     RPMap.clearRoutes();
     RPMap.clearPoiMarkers();
 
@@ -728,6 +729,7 @@
     }
 
     RPUi.setLoading(true, `Calcul de ${routeDefs.length} parcours en cours…`, handleCancelGenerate);
+    clearOverlapHighlights();
     RPMap.clearRoutes();
     RPMap.clearPoiMarkers(); // efface les marqueurs numérotés d'une éventuelle visite citadine précédente
     const results = [];
@@ -776,6 +778,10 @@
             quality,
             visible: true,
             avgSpeedKmh: criteria.avgSpeedKmh,
+            boundaryPoints: labelBoundaryPoints,
+            trimmable: isLoopMode,
+            overlapSegments: isLoopMode ? RPOverlaps.findSegments(stats.latlngs) : [],
+            criteria,
           });
         } catch (err) {
           const ms = Math.round(performance.now() - t0);
@@ -805,6 +811,7 @@
         RPUi.switchTab('results');
       }, 350);
       renderResultsPanel();
+      drawOverlapHighlights();
     } else {
       RPUtils.debugLog('Aucun parcours généré (tous les profils ont échoué).', 'warn');
     }
@@ -817,6 +824,71 @@
     RPUtils.toast('Génération annulée.');
   }
 
+  let overlapHighlightLayer = null;
+
+  function clearOverlapHighlights() {
+    if (overlapHighlightLayer) {
+      RPMap.getMap().removeLayer(overlapHighlightLayer);
+      overlapHighlightLayer = null;
+    }
+  }
+
+  function drawOverlapHighlights() {
+    clearOverlapHighlights();
+    const map = RPMap.getMap();
+    overlapHighlightLayer = L.featureGroup().addTo(map);
+    for (const result of state.results) {
+      if (!result.trimmable || !result.visible) continue;
+      for (const [index, segment] of result.overlapSegments.entries()) {
+        const piece = result.stats.latlngs.slice(segment.startIndex, segment.endIndex + 1);
+        if (piece.length < 2) continue;
+        const onTap = (event) => {
+          L.DomEvent.stopPropagation(event);
+          const content = document.createElement('div');
+          const label = document.createElement('p');
+          label.textContent = `Aller-retour superflu : environ ${(segment.removedDistanceM / 1000).toFixed(1)} km à retirer.`;
+          content.appendChild(label);
+          const button = document.createElement('button');
+          button.type = 'button'; button.className = 'route-trim-map-btn';
+          button.textContent = '✂️ Tronquer cette portion';
+          button.addEventListener('click', () => {
+            trimOverlap(result.def.id, index);
+            map.closePopup();
+          });
+          content.appendChild(button);
+          L.popup({ minWidth: 205 }).setLatLng(event.latlng).setContent(content).openOn(map);
+        };
+        L.polyline(piece, { color: '#9c36ef', weight: 6, opacity: 0.82, dashArray: '3,9' })
+          .on('click', onTap).addTo(overlapHighlightLayer);
+        L.polyline(piece, { color: '#9c36ef', weight: 28, opacity: 0 })
+          .on('click', onTap).addTo(overlapHighlightLayer);
+      }
+    }
+  }
+
+  function trimOverlap(routeId, index) {
+    const result = state.results.find((r) => r.def.id === routeId);
+    if (!result?.trimmable) return;
+    const segment = result.overlapSegments[index];
+    if (!segment) return;
+    try {
+      const removed = RPOverlaps.trimStats(result.stats, segment);
+      result.overlapSegments = RPOverlaps.findSegments(result.stats.latlngs);
+      result.quality = RPRouting.estimateQuality(result.stats, result.criteria, result.def.id);
+      RPMap.drawRoute(routeId, result.stats.latlngs, result.def.colorHex, {
+        avgSpeedKmh: result.avgSpeedKmh,
+        boundaryPoints: result.boundaryPoints,
+        routeIndex: state.results.indexOf(result),
+        visible: result.visible,
+      });
+      renderResultsPanel();
+      drawOverlapHighlights();
+      RPUtils.toast(`Portion coupée : environ ${(removed / 1000).toFixed(1)} km en moins. Les exports utilisent le parcours modifié.`);
+    } catch (error) {
+      RPUtils.toast(error.message, { error: true });
+    }
+  }
+
   function renderResultsPanel() {
     RPUi.renderResults(state.results, {
       onToggleVisibility: (routeId) => {
@@ -825,7 +897,9 @@
         result.visible = !result.visible;
         RPMap.setRouteVisibility(routeId, result.visible);
         renderResultsPanel();
+        drawOverlapHighlights();
       },
+      onTrim: trimOverlap,
       onExport: (routeId, format) => {
         const result = state.results.find((r) => r.def.id === routeId);
         if (!result) return;
