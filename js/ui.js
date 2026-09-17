@@ -130,9 +130,6 @@ const RPUi = (() => {
   function initCriteriaFields() {
     const bindings = [
       ['range-distance', 'val-distance', (v) => v],
-      ['range-elevation', 'val-elevation', (v) => v],
-      ['range-major-roads', 'val-major-roads', (v) => v],
-      ['range-lights', 'val-lights', (v) => v],
       ['range-speed', 'val-speed', (v) => v],
       ['range-city-duration', 'val-city-duration', formatCityDuration],
     ];
@@ -141,10 +138,6 @@ const RPUi = (() => {
       const label = document.getElementById(labelId);
       if (!input || !label) return;
       input.addEventListener('input', () => { label.textContent = transform(input.value); });
-    });
-
-    document.querySelectorAll('.chip').forEach((chip) => {
-      chip.addEventListener('click', () => chip.classList.toggle('is-active'));
     });
 
     // Persistance de la clé API ORS en localStorage

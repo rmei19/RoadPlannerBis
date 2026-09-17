@@ -127,20 +127,14 @@ const RPProfiles = (() => {
   /** Lit les critères actuellement définis dans l'onglet "Critères" du panneau. */
   function readCriteriaFromUI() {
     const getVal = (id) => document.getElementById(id)?.value;
-    const activePrefs = Array.from(document.querySelectorAll('.chip.is-active'))
-      .map((el) => el.dataset.pref);
-
     return {
       distanceKm: parseFloat(getVal('range-distance')) || 60,
       toleranceRatio: 0.10,
-      elevationTarget: parseFloat(getVal('range-elevation')) || 1000,
       relief: 'rolling',
       loopDirection: getVal('select-loop-direction') || 'centered',
       avoidOverlap: document.getElementById('chk-avoid-overlap')?.checked || false,
-      maxMajorRoads: parseInt(getVal('range-major-roads'), 10) || 0,
-      maxLights: parseInt(getVal('range-lights'), 10) || 0,
+      maxMajorRoads: 3, // Ancien défaut : utilisé uniquement dans la note, jamais comme filtre routier.
       avgSpeedKmh: parseFloat(getVal('range-speed')) || 27,
-      preferences: activePrefs,
       routingEngine: getVal('select-engine') || 'auto',
       bikeType: getVal('select-bike-type') || 'road',
       routeCount: parseInt(getVal('select-route-count'), 10) || 1,
@@ -148,19 +142,9 @@ const RPProfiles = (() => {
     };
   }
 
-  /** Ajuste dynamiquement les poids ORS en fonction des préférences cochées par l'utilisateur. */
+  /** Conserve les poids propres à chaque profil d'itinéraire. */
   function applyUserPreferences(baseOptions, criteria) {
-    const options = JSON.parse(JSON.stringify(baseOptions));
-    const w = options.weightings;
-    if (criteria.preferences.includes('small-roads')) w.quiet = Math.min(1, w.quiet + 0.2);
-    if (criteria.preferences.includes('scenic')) w.green = Math.min(1, w.green + 0.2);
-    if (criteria.preferences.includes('cols')) options.profile_hint_climb = true;
-    if (criteria.preferences.includes('riverside') || criteria.preferences.includes('valleys')) {
-      w.green = Math.min(1, w.green + 0.1);
-    }
-    // Relief souhaité : influence le profil de recherche de boucle (voir loops.js)
-    options.reliefTarget = criteria.relief;
-    return options;
+    return JSON.parse(JSON.stringify(baseOptions));
   }
 
   /**

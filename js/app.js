@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.6.0';
+  const APP_VERSION = '2.7.0';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -493,6 +493,7 @@
     });
 
     document.getElementById('btn-theme').addEventListener('click', toggleTheme);
+    document.getElementById('btn-settings').addEventListener('click', () => RPUi.switchTab('criteria'));
   }
 
   function initSuiteMenu() {
@@ -518,8 +519,6 @@
     const prefersLight = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches;
     const resolved = preference === 'system' ? (prefersLight ? 'light' : 'dark') : preference;
     document.documentElement.setAttribute('data-theme', resolved);
-    document.getElementById('icon-theme-dark').hidden = resolved === 'light';
-    document.getElementById('icon-theme-light').hidden = resolved !== 'light';
     const button = document.getElementById('btn-theme');
     button.title = `Thème : ${preference === 'system' ? 'système' : preference}. Toucher pour changer.`;
     button.setAttribute('aria-label', button.title);

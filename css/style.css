@@ -822,8 +822,9 @@ body.has-protocol-warning .fab { margin-top: 44px; }
 .tempo-topbar .suite-toggle:hover, .tempo-topbar .fab:hover { background: var(--color-surface-alt); }
 .tempo-topbar .suite-menu { position: absolute; top: 100%; left: 0; max-width: calc(100vw - 24px); }
 .tempo-topbar .fab {
-  position: static; z-index: auto; flex: 0 0 39px; width: 39px; height: 39px;
-  border-radius: 9px; box-shadow: none; background: transparent;
+  position: static; z-index: auto; flex: 0 0 37px; width: 37px; height: 37px;
+  border-radius: 999px; box-shadow: none; background: transparent;
+  font-size: 18px; line-height: 1;
 }
 .tempo-topbar .fab svg { fill: currentColor; }
 .flow-section { display: block; scroll-margin-top: 8px; }

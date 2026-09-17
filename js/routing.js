@@ -361,12 +361,9 @@ const RPRouting = (() => {
       score += Math.max(0, 1 - distanceError * 2);
     }
 
-    if (criteria.elevationTarget > 0) {
-      const eleError = Math.abs(routeStats.ascent - criteria.elevationTarget) / criteria.elevationTarget;
-      score += Math.max(0, 1 - eleError);
-    } else {
-      score += routeStats.ascent < 300 ? 1 : 0.5;
-    }
+    // D+ réel affiché dans les résultats, sans cible de D+ qui ne pilotait
+    // pas les moteurs de routage. Note neutre à la place de cette cible.
+    score += 1;
 
     return Math.max(0, Math.min(5, Math.round(score * 10) / 10));
   }

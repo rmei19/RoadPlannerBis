@@ -48,7 +48,7 @@
 <header class="tempo-topbar" aria-label="Barre Tempo Routes">
   <div class="tempo-topbar-inner">
 <div class="suite-switcher" id="suite-switcher">
-  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.6.0</span> ▾</button>
+  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.7.0</span> ▾</button>
   <nav id="suite-menu" class="suite-menu" aria-label="Applications Tempo" hidden>
     <a href="https://octopi.tail2fca2d.ts.net:8443/">Tempo · Agenda</a>
     <a href="https://rmei19.github.io/GPXStravaLike/">Tempo · Traces</a>
@@ -56,24 +56,15 @@
     <a href="./" aria-current="page">Tempo · Routes</a>
   </nav>
 </div>
-<!-- Bouton localisation flottant -->
-<button id="btn-locate" class="fab fab-locate" title="Me localiser" aria-label="Me localiser">
-  <svg viewBox="0 0 24 24" width="22" height="22">
-    <path fill="#4285F4" d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"/>
-    <circle cx="12" cy="9" r="2.6" fill="#fff"/>
-  </svg>
-</button>
+<!-- Même jeu de commandes que RunPlanner : réglages, localisation, thème. -->
+<button id="btn-settings" class="fab fab-settings" type="button" title="Réglages du parcours" aria-label="Afficher les réglages">⚙️</button>
+<button id="btn-locate" class="fab fab-locate" type="button" title="Me localiser" aria-label="Me localiser">📍</button>
 
 <!-- Bouton bascule couches (fond de carte) : icône "carte pliée", plus explicite qu'un pictogramme de calques abstrait -->
-<button id="btn-layers" class="fab fab-layers" title="Changer le fond de carte" aria-label="Changer le fond de carte">
-  <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M20.5 3l-.16.03L15 5.1 9 3 3.36 4.9c-.21.07-.36.25-.36.48V20.5c0 .28.22.5.5.5l.16-.03L9 18.9l6 2.1 5.64-1.9c.21-.07.36-.25.36-.48V3.5c0-.28-.22-.5-.5-.5zM15 19l-6-2.11V5l6 2.11V19z"/></svg>
-</button>
+<button id="btn-layers" class="fab fab-layers" type="button" title="Changer le fond de carte" aria-label="Changer le fond de carte">🗺️</button>
 
 <!-- Bouton bascule thème clair/sombre -->
-<button id="btn-theme" class="fab fab-theme" title="Thème système, clair ou sombre" aria-label="Changer de thème">
-  <svg id="icon-theme-dark" viewBox="0 0 24 24" width="19" height="19"><path fill="currentColor" d="M12 3a9 9 0 109 9c0-.46-.04-.92-.1-1.36a5.389 5.389 0 01-4.4 2.26 5.403 5.403 0 01-3.14-9.8c-.44-.06-.9-.1-1.36-.1z"/></svg>
-  <svg id="icon-theme-light" viewBox="0 0 24 24" width="19" height="19" hidden><path fill="currentColor" d="M12 7a5 5 0 100 10 5 5 0 000-10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
-</button>
+<button id="btn-theme" class="fab fab-theme" type="button" title="Thème système, clair ou sombre" aria-label="Changer de thème">🌓</button>
 
   </div>
 </header>
@@ -244,36 +235,12 @@
         <input type="range" id="range-distance" min="10" max="300" step="5" value="60">
       </div>
 
-      <div class="field-group">
-        <label class="field-label" for="range-elevation">Dénivelé souhaité : <span id="val-elevation">1000</span> m D+</label>
-        <input type="range" id="range-elevation" min="0" max="4000" step="50" value="1000">
-      </div>
-
       <button class="btn-primary btn-generate" id="btn-generate">Générer 3 parcours</button>
     </section>
 
     <details class="criteria-details" id="criteria-details">
       <summary><span aria-hidden="true">⚙</span> Réglages avancés <span class="summary-chevron" aria-hidden="true">⌄</span></summary>
     <section class="flow-section" id="tab-criteria">
-
-      <div class="field-group">
-        <label class="field-label" for="range-major-roads">Nb max de grandes routes traversées : <span id="val-major-roads">3</span></label>
-        <input type="range" id="range-major-roads" min="0" max="15" step="1" value="3">
-        <label class="field-label" for="range-lights">Nb max de feux tricolores : <span id="val-lights">10</span></label>
-        <input type="range" id="range-lights" min="0" max="40" step="1" value="10">
-      </div>
-
-      <div class="field-group">
-        <label class="field-label">Préférences (cocher tout ce qui s'applique)</label>
-        <div class="chip-grid" id="preferences-chips">
-          <button class="chip" data-pref="small-roads">Petites routes</button>
-          <button class="chip" data-pref="scenic">Routes panoramiques</button>
-          <button class="chip" data-pref="villages">Villages</button>
-          <button class="chip" data-pref="valleys">Vallées</button>
-          <button class="chip" data-pref="cols">Cols</button>
-          <button class="chip" data-pref="riverside">Bords de rivière</button>
-        </div>
-      </div>
 
       <div class="field-group">
         <label class="field-label" for="range-speed">Vitesse moyenne : <span id="val-speed">27</span> km/h</label>
