@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.7.0';
+  const APP_VERSION = '2.8.0';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -247,9 +247,9 @@
       case 'out-and-back':
         return end ? [start, ...waypoints, end] : [start];
       case 'loop-waypoints':
-        return [start, ...waypoints, start];
       case 'loop':
       case 'random-loop':
+        return [start, ...waypoints, start];
       default:
         return [start, start];
     }
@@ -748,21 +748,24 @@
             let coordinates = sharedCoordinates;
             if (isLoopMode) {
               RPUi.setLoading(true, `Vérification de la forme — itinéraire "${def.name}"…`, handleCancelGenerate);
-              coordinates = await RPLoops.buildLoopCoordinatesForRoute(state.mode, startLatLng, criteria, options.brouterProfile);
+              coordinates = await RPLoops.buildLoopCoordinatesForRoute(state.mode, startLatLng, criteria, options.brouterProfile, waypointsLatLng);
               if (generationCancelled) break;
               RPUi.setLoading(true, `Calcul de ${routeDefs.length} parcours en cours…`, handleCancelGenerate);
             }
             const candidate = await RPRouting.computeRoute(coordinates, def, options, criteria);
             if (isLoopMode) {
-              const cleaned = RPOverlaps.trimShortSpurs(candidate);
+              const cleaned = RPOverlaps.trimShortSpurs(candidate, { protectedPoints: waypointsLatLng });
               if (cleaned.cuts) RPUtils.debugLog(`${cleaned.cuts} petite(s) antenne(s) coupée(s) automatiquement (${Math.round(cleaned.removedM)} m).`, 'info');
             }
-            const check = isLoopMode
+            const shapeCheck = isLoopMode
               ? RPLoops.validateLoopRoute(candidate.latlngs, startLatLng, criteria.loopDirection, criteria.avoidOverlap)
               : { ok: true };
+            const check = shapeCheck.ok && waypointsLatLng.length
+              ? RPLoops.validateUserWaypoints(candidate.latlngs, waypointsLatLng)
+              : shapeCheck;
             if (check.ok) { stats = candidate; break; }
             RPUtils.debugLog(`Résultat routé refusé (essai ${attempt}/${finalAttempts}) : ${check.reason}`, 'warn');
-            if (attempt === finalAttempts) throw new Error(`${check.reason} Essaie une autre direction ou adapte la distance.`);
+            if (attempt === finalAttempts) throw new Error(isLoopMode ? `${check.reason} Essaie une autre direction ou adapte la distance.` : check.reason);
           }
           if (generationCancelled || !stats) break;
           const ms = Math.round(performance.now() - t0);

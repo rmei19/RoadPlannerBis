@@ -119,3 +119,7 @@ La tolérance et le type de relief ne sont plus demandés dans l'interface : les
 ## Version 2.7.0 — Réglages simplifiés
 
 Le curseur de D+ souhaité a été retiré : il ne modifiait pas le tracé. Le D+ mesuré reste affiché après génération et ne change plus la note de qualité. Les champs « maximum de grandes routes » (simple effet sur la note) et « maximum de feux » (aucun effet) ainsi que les préférences Petites routes, Panoramiques, Villages, Vallées, Cols et Bords de rivière ne sont plus proposés. Les poids de routage restent ceux des trois profils d'itinéraire quand aucune préférence n'était cochée. Course/Gravel/VTT reste disponible et continue de modifier les profils ORS/BRouter. La barre haute utilise les mêmes pictogrammes réglages, localisation et thème que RunPlanner ; l'icône de carte garde l'accès aux fonds de carte. Le bouton réglages ouvre directement la section avancée.
+
+## Version 2.8.0 — Points de passage dans les boucles
+
+Les modes Boucle et Boucle aléatoire affichent les points de passage. Ceux-ci sont insérés dans le trajet généré dans l'ordre choisi. Le tracé réellement calculé est vérifié avant d'être affiché : si un point ne peut pas être atteint, la génération le signale au lieu de présenter une boucle qui l'ignore. Les petites antennes coupées automatiquement ne peuvent plus supprimer un point demandé.

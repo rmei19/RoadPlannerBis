@@ -131,12 +131,21 @@ const RPOverlaps = (() => {
    * n'appelle jamais cette fonction. Les index sont recalculés après chaque
    * coupe ; chaque boucle reparcourt le nouveau tracé et son profil d'altitude.
    */
-  function trimShortSpurs(stats, { maxCuts = 4, maxSpurM = 1400 } = {}) {
+  function trimShortSpurs(stats, { maxCuts = 4, maxSpurM = 1400, protectedPoints = [] } = {}) {
     let removedM = 0, cuts = 0;
     for (let attempt = 0; attempt < maxCuts; attempt++) {
+      const protectedIndices = protectedPoints.map(point => {
+        let index = -1, distance = Infinity;
+        stats.latlngs.forEach((candidate, i) => {
+          const meters = RPUtils.haversineDistance(candidate, point);
+          if (meters < distance) { distance = meters; index = i; }
+        });
+        return distance <= 200 ? index : -1;
+      });
       const segment = findSegments(stats.latlngs, { thresholdM: 14, minDistanceM: 120, maxDistanceM: maxSpurM + 16 })
         .find(s => s.removedDistanceM <= maxSpurM
-          && RPUtils.haversineDistance(stats.latlngs[s.startIndex], stats.latlngs[s.endIndex]) <= 16);
+          && RPUtils.haversineDistance(stats.latlngs[s.startIndex], stats.latlngs[s.endIndex]) <= 16
+          && !protectedIndices.some(index => index > s.startIndex && index < s.endIndex));
       if (!segment) break;
       removedM += trimStats(stats, segment);
       cuts++;

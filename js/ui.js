@@ -204,7 +204,7 @@ const RPUi = (() => {
       case 'loop':
       case 'random-loop':
         endGroup.style.display = 'none';
-        waypointsGroup.style.display = 'none';
+        waypointsGroup.style.display = '';
         detourGroup.style.display = 'none';
         cityTourGroup.style.display = 'none';
         routeCountGroup.style.display = '';

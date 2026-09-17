@@ -191,6 +191,58 @@ const RPLoops = (() => {
     return { ok: true };
   }
 
+  /** Insère les passages imposés dans l'anneau théorique sans changer leur ordre.
+   * Le coût d'insertion minimise le détour à vol d'oiseau. Le moteur de
+   * routage calcule ensuite les véritables routes entre ces points.
+   */
+  function insertUserWaypoints(start, syntheticPoints, userWaypoints) {
+    const ring = [start, ...syntheticPoints, start];
+    if (!userWaypoints.length) return ring;
+    const segmentCount = ring.length - 1;
+    const cost = (point, segment) =>
+      RPUtils.haversineDistance(ring[segment], point)
+      + RPUtils.haversineDistance(point, ring[segment + 1])
+      - RPUtils.haversineDistance(ring[segment], ring[segment + 1]);
+    const dp = userWaypoints.map(() => Array(segmentCount).fill(Infinity));
+    const parent = userWaypoints.map(() => Array(segmentCount).fill(-1));
+    for (let segment = 0; segment < segmentCount; segment++) dp[0][segment] = cost(userWaypoints[0], segment);
+    for (let point = 1; point < userWaypoints.length; point++) {
+      for (let segment = 0; segment < segmentCount; segment++) {
+        for (let previous = 0; previous <= segment; previous++) {
+          const candidate = dp[point - 1][previous] + cost(userWaypoints[point], segment);
+          if (candidate < dp[point][segment]) {
+            dp[point][segment] = candidate;
+            parent[point][segment] = previous;
+          }
+        }
+      }
+    }
+    let segment = dp.at(-1).indexOf(Math.min(...dp.at(-1)));
+    const bins = Array.from({ length: segmentCount }, () => []);
+    for (let point = userWaypoints.length - 1; point >= 0; point--) {
+      bins[segment].unshift(userWaypoints[point]);
+      segment = parent[point][segment];
+    }
+    return ring.flatMap((anchor, i) => i < bins.length ? [anchor, ...bins[i]] : [anchor]);
+  }
+
+  /** Vérifie les passages réels dans l'ordre sélectionné, après routage. */
+  function validateUserWaypoints(latlngs, waypoints, toleranceM = 200) {
+    let previousIndex = 0;
+    for (let i = 0; i < waypoints.length; i++) {
+      let nearestIndex = -1, nearestDistance = Infinity;
+      for (let j = previousIndex; j < latlngs.length; j++) {
+        const distance = RPUtils.haversineDistance(latlngs[j], waypoints[i]);
+        if (distance < nearestDistance) { nearestDistance = distance; nearestIndex = j; }
+      }
+      if (nearestDistance > toleranceM) {
+        return { ok: false, reason: `Le parcours ne passe pas par le point de passage ${i + 1} (${Math.round(nearestDistance)} m d'écart).` };
+      }
+      previousIndex = nearestIndex;
+    }
+    return { ok: true };
+  }
+
   /**
    * Génère des points de boucle, valide leur forme réelle via un calcul
    * BRouter rapide AVEC LE PROFIL PROPRE À CET ITINÉRAIRE (pas un profil
@@ -202,12 +254,12 @@ const RPLoops = (() => {
    * maxAttempts et renvoie la dernière tentative telle quelle (avec un
    * avertissement dans le journal) plutôt que de bloquer la génération.
    */
-  async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5, requireUniqueRoads = false, direction = 'random') {
+  async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5, requireUniqueRoads = false, direction = 'random', userWaypoints = []) {
     let lastCoords = null;
     let trimmableCoords = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const loopPts = generatorFn();
-      const coords = [start, ...loopPts, start];
+      const coords = insertUserWaypoints(start, loopPts, userWaypoints);
       lastCoords = coords;
       try {
         // BRouter (GET, gratuit, rapide) sert uniquement de test de forme,
@@ -215,7 +267,8 @@ const RPLoops = (() => {
         // itinéraire ; le vrai calcul (ORS ou BRouter selon le moteur choisi)
         // se fait séparément juste après, sur ces mêmes coordonnées.
         const preview = await RPRouting.computeRoute(coords, { name: 'aperçu boucle' }, { profile: brouterProfile, brouterProfile }, { routingEngine: 'brouter' });
-        const check = validateLoopRoute(preview.latlngs, start, direction, requireUniqueRoads);
+        const shape = validateLoopRoute(preview.latlngs, start, direction, requireUniqueRoads);
+        const check = shape.ok ? validateUserWaypoints(preview.latlngs, userWaypoints) : shape;
         if (check.ok) {
           if (attempt > 1) RPUtils.debugLog(`Boucle valide obtenue après ${attempt} tentative(s).`, 'ok');
           return coords;
@@ -232,7 +285,7 @@ const RPLoops = (() => {
       }
     }
     if (trimmableCoords) return trimmableCoords;
-    if (requireUniqueRoads || direction !== 'random' && direction !== 'centered') throw new Error('Aucune boucle respectant la direction et sans tronçon répété trouvée en cinq essais. Change la distance, le cap ou les critères.');
+    if (userWaypoints.length || requireUniqueRoads || direction !== 'random' && direction !== 'centered') throw new Error('Aucune boucle valide ne passe par tous les points choisis. Modifie les points, la distance ou la direction.');
     RPUtils.debugLog(`Aucune boucle sans aller-retour trouvée après ${maxAttempts} tentatives, utilisation de la dernière forme générée.`, 'warn');
     return lastCoords;
   }
@@ -242,18 +295,18 @@ const RPLoops = (() => {
    * (avec son propre profil BRouter de validation). À appeler séparément
    * pour chacun des itinéraires générés, jamais une seule fois partagée.
    */
-  async function buildLoopCoordinatesForRoute(mode, start, criteria, brouterProfile) {
+  async function buildLoopCoordinatesForRoute(mode, start, criteria, brouterProfile, userWaypoints = []) {
     if (mode === 'random-loop') {
       return buildValidatedLoopCoordinates(
         start, criteria.distanceKm, criteria.relief,
         () => generateRandomLoopWaypoints(start, criteria.distanceKm, criteria.relief, criteria.loopDirection),
-        brouterProfile, 5, criteria.avoidOverlap, criteria.loopDirection
+        brouterProfile, 5, criteria.avoidOverlap, criteria.loopDirection, userWaypoints
       );
     }
     return buildValidatedLoopCoordinates(
       start, criteria.distanceKm, criteria.relief,
       () => generateLoopWaypoints(start, criteria.distanceKm, { relief: criteria.relief, direction: criteria.loopDirection }),
-      brouterProfile
+      brouterProfile, 5, criteria.avoidOverlap, criteria.loopDirection, userWaypoints
     );
   }
 
@@ -337,5 +390,5 @@ const RPLoops = (() => {
     }
   }
 
-  return { generateLoopWaypoints, generateRandomLoopWaypoints, generateDetourWaypoints, buildCoordinatesForMode, buildLoopCoordinatesForRoute, validateLoopRoute };
+  return { generateLoopWaypoints, generateRandomLoopWaypoints, generateDetourWaypoints, buildCoordinatesForMode, buildLoopCoordinatesForRoute, validateLoopRoute, validateUserWaypoints, insertUserWaypoints };
 })();
