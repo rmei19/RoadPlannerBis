@@ -32,9 +32,9 @@ const RPUi = (() => {
 
     const stateTop = (state) => {
       const map = {
-        collapsed: vh() - 108,
+        collapsed: vh() - 68,
         half: vh() * 0.52,
-        full: Math.max(56, safeTopPx() + 44),
+        full: Math.max(64, safeTopPx() + 64),
       };
       return map[state];
     };
@@ -58,7 +58,7 @@ const RPUi = (() => {
       const clientY = (e.touches ? e.touches[0].clientY : e.clientY);
       const delta = clientY - startY;
       let newTop = startTop + delta;
-      newTop = Math.max(stateTop('full'), Math.min(vh() - 96, newTop));
+      newTop = Math.max(stateTop('full'), Math.min(stateTop('collapsed'), newTop));
       panel.style.top = `${newTop}px`;
       panel.style.transition = 'none';
     }
@@ -103,23 +103,14 @@ const RPUi = (() => {
      Onglets
      ====================================================================== */
 
-  function initTabs() {
-    document.querySelectorAll('.tab-btn').forEach((btn) => {
-      btn.addEventListener('click', () => switchTab(btn.dataset.tab));
-    });
-  }
+  function initTabs() { /* Les sections partagent désormais un seul panneau. */ }
 
   function switchTab(tabId) {
-    document.querySelectorAll('.tab-btn').forEach((b) => {
-      const active = b.dataset.tab === tabId;
-      b.classList.toggle('is-active', active);
-      b.setAttribute('aria-selected', String(active));
-    });
-    document.querySelectorAll('.tab-panel').forEach((p) => {
-      p.classList.toggle('is-active', p.id === `tab-${tabId}`);
-    });
-    // Ouvrir un peu le panneau si on consulte un onglet alors qu'il est replié
+    const target = document.getElementById(`tab-${tabId}`);
+    if (!target) return;
+    if (tabId === 'criteria') document.getElementById('criteria-details').open = true;
     if (currentState === 'collapsed') setPanelState('half');
+    requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
   }
 
   /* ======================================================================

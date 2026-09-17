@@ -802,3 +802,45 @@ body.has-protocol-warning .fab { margin-top: 44px; }
 .route-trim-btn { display: inline-block; margin: 5px 5px 0 0; padding: 8px 11px; min-height: 42px; border: 1px solid #9546c9; border-radius: 7px; background: var(--color-surface-alt); color: var(--color-text); cursor: pointer; }
 .route-trim-btn:hover { background: #9546c9; }
 .route-trim-map-btn { display: block; padding: 11px; border: 0; border-radius: 8px; background: #8736bd; color: #fff; font: 600 14px var(--font-body); cursor: pointer; min-height: 44px; }
+
+/* v2.5 — en-tête commun à la suite et panneau continu façon RunPlanner. */
+:root { --topbar-height: 58px; }
+#map { top: var(--topbar-height); }
+.tempo-topbar {
+  position: fixed; z-index: 1200; top: 0; left: 0; right: 0;
+  height: var(--topbar-height); padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
+  background: var(--color-surface); border-bottom: 1px solid var(--color-border);
+}
+.tempo-topbar-inner { display: flex; align-items: center; gap: 7px; width: 100%; height: 100%; }
+.tempo-topbar .suite-switcher { position: relative; z-index: 2; top: auto; left: auto; right: auto; flex: 1; min-width: 0; }
+.tempo-topbar .suite-toggle {
+  width: 100%; border: 0; border-radius: 9px; box-shadow: none;
+  padding: 8px 5px; background: transparent; text-align: left;
+  font: 600 16px var(--font-body); white-space: nowrap;
+}
+.tempo-topbar .suite-toggle strong { color: #61d9d0; }
+.tempo-topbar .suite-toggle:hover, .tempo-topbar .fab:hover { background: var(--color-surface-alt); }
+.tempo-topbar .suite-menu { position: absolute; top: 100%; left: 0; max-width: calc(100vw - 24px); }
+.tempo-topbar .fab {
+  position: static; z-index: auto; flex: 0 0 39px; width: 39px; height: 39px;
+  border-radius: 9px; box-shadow: none; background: transparent;
+}
+.tempo-topbar .fab svg { fill: currentColor; }
+.flow-section { display: block; scroll-margin-top: 8px; }
+#tab-search { padding-top: 18px; }
+.criteria-details { margin: 9px 0 18px; border: 1px solid var(--color-border); border-radius: var(--radius-md); }
+.criteria-details > summary {
+  display: flex; align-items: center; gap: 9px; min-height: 48px; padding: 10px 14px;
+  color: var(--color-text); font-size: 14px; font-weight: 600; cursor: pointer; list-style: none;
+}
+.criteria-details > summary::-webkit-details-marker { display: none; }
+.criteria-details .summary-chevron { margin-left: auto; transition: transform .2s; }
+.criteria-details[open] .summary-chevron { transform: rotate(180deg); }
+.criteria-details > .flow-section { padding: 10px 14px 0; border-top: 1px solid var(--color-border); }
+.results-section { padding: 8px 0 28px; border-top: 1px solid var(--color-border); }
+.flow-heading { font: 700 22px var(--font-display); margin: 8px 0 14px; letter-spacing: .02em; }
+.panel-handle { width: 100%; flex-direction: column; gap: 6px; border: 0; border-bottom: 1px solid var(--color-border); border-radius: inherit; background: transparent; color: var(--color-text); font: 600 13px var(--font-body); }
+.panel-handle .handle-label { line-height: 1.1; }
+
+body.has-protocol-warning .tempo-topbar { top: 44px; }
+body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }

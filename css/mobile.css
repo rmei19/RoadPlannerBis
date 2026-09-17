@@ -47,3 +47,17 @@
   /* La sidebar prend le relais au-delà de 768px : voir desktop.css */
   .panel-handle { display: none; }
 }
+
+/* v2.5 — carte sous l'en-tête et panneau sans barre de trois onglets. */
+@media (max-width: 767px) {
+  .panel[data-state="collapsed"] { top: calc(100% - 68px); }
+  .panel[data-state="full"] { top: max(64px, calc(var(--safe-top) + 64px)); }
+  .panel-handle { min-height: 68px; padding: 10px 0; }
+  .panel-scroll { padding-bottom: calc(28px + var(--safe-bottom)); }
+  .tempo-topbar .suite-toggle { font-size: 14px; }
+  .tempo-topbar .suite-toggle span { font-size: 11px; }
+}
+@media (max-width: 380px) {
+  .tempo-topbar .suite-toggle span { display: none; }
+  .tempo-topbar .fab { flex-basis: 36px; width: 36px; height: 36px; }
+}

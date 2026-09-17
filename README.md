@@ -43,8 +43,8 @@ Puis ouvrir `http://localhost:8080`.
 
 ## Configuration
 
-- **Clé OpenRouteService** (optionnelle si le moteur BRouter ou Automatique est utilisé) : à créer gratuitement sur [openrouteservice.org/dev/#/signup](https://openrouteservice.org/dev/#/signup), puis à coller dans l'onglet **Critères** de l'app. Stockée uniquement dans le `localStorage` du navigateur — jamais dans le code ni committée.
-- **Moteur de routage** (onglet Critères) :
+- **Clé OpenRouteService** (optionnelle si le moteur BRouter ou Automatique est utilisé) : à créer gratuitement sur [openrouteservice.org/dev/#/signup](https://openrouteservice.org/dev/#/signup), une clé de démonstration partagée est intégrée à cette version à la demande du propriétaire. Son encodage dans le code ne constitue pas une protection : toute personne visitant le site peut la retrouver. Une clé personnelle peut être saisie dans **Réglages avancés** et sera conservée dans le navigateur.
+- **Moteur de routage** (Réglages avancés) :
   - *Automatique* (par défaut) : tente OpenRouteService, bascule sur BRouter en cas d'échec/indisponibilité.
   - *OpenRouteService uniquement*
   - *BRouter uniquement* : aucune clé nécessaire, mais ne fournit pas le détail % pistes cyclables / % petites routes (affiché "N/D").
@@ -81,7 +81,7 @@ RoadPlanner/
 │   ├── loops.js             # Génération des points de passage (boucles)
 │   ├── gpx.js               # Export GPX / TCX / FIT
 │   ├── weather.js          # Prévisions météo (Open-Meteo, sans clé)
-│   ├── ui.js                # Panneau, onglets, rendu des résultats
+│   ├── ui.js                # Panneau continu, rendu des résultats
 │   └── app.js                # Orchestration, état applicatif
 └── icons/
 ```
@@ -97,7 +97,6 @@ RoadPlanner/
 - Clique sur **Tempo** pour ouvrir le menu de la suite ; le bouton thème alterne système, clair et sombre.
 - Dans « Points de passage », utilise **+ avant** pour insérer le prochain point (carte ou recherche) à cet emplacement ; les flèches réordonnent les étapes. Les points restent dans cet ordre même avec les détours du mode A→B.
 - Pour les boucles, choisis une direction initiale et, si souhaité, coche « Écarter les boucles qui empruntent deux fois le même tronçon ». En l'absence de boucle satisfaisante après cinq essais, aucun tracé répété n'est présenté comme valide. Cela ne coupe pas automatiquement un aller-retour, car un tel découpage déplacerait le départ ou supprimerait l'arrivée.
-- La clé ORS précédemment encodée a été retirée : un code servi par GitHub Pages est lisible par tous. Révoque l'ancienne clé publiée dans le tableau de bord ORS, puis colle une nouvelle clé dans Critères sur chaque appareil qui en a besoin. Elle reste dans le stockage local du navigateur, accessible au JavaScript de ce site. Le routage automatique sans clé utilise BRouter.
 - Après publication, rafraîchis l'application installée pour activer le cache 2.2.1.
 
 ## Version 2.3.0 — Boucles orientées
@@ -107,3 +106,8 @@ Le polygone est désormais placé dans la direction choisie (le départ est en b
 ## Version 2.4.0 — Antennes à couper
 
 Sur les boucles générées, une portion aller-retour reconnue sur la même voie apparaît en violet. Appuyer sur les tirets violets de la carte ou sur le bouton de la fiche de parcours pour retirer cette seule antenne. La détection vérifie le chemin aller et le retour le long du trajet : une boucle qui repasse près de son départ ne suffit pas à déclencher une coupe. Le mode Aller-retour volontaire reste intact. Après la coupe, carte, distance, durée, profil altimétrique et exports GPX/TCX/FIT portent sur le même trajet. Les anciennes statistiques détaillées de voirie ORS sont affichées « N/D » après une coupe car elles ne correspondent plus au parcours raccourci.
+
+
+## Version 2.5.0 — Panneau unique et boucle centrée
+
+La navigation Rechercher/Critères/Parcours est réunie dans un panneau défilant avec réglages avancés repliables et résultats dans la même vue. La barre Tempo regroupe le menu de la suite, la localisation, le fond de carte et le thème, sur mobile comme sur ordinateur. Dans la direction des boucles, **Centré** répartit les points autour du départ ; les quatre points cardinaux continuent de privilégier un secteur. L’ancienne préférence `random` reste comprise comme `centered`. La clé de démonstration intégrée a été rétablie à la demande du propriétaire (voir Configuration).

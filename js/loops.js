@@ -22,7 +22,7 @@ const RPLoops = (() => {
    * périmètre théorique correspond à la distance souhaitée, centré sur
    * un décalage par rapport au départ (pour ne pas repartir plein centre).
    */
-  function generateLoopWaypoints(startLatLng, distanceKm, { vertices = 6, seed = null, relief = 'rolling', direction = 'random' } = {}) {
+  function generateLoopWaypoints(startLatLng, distanceKm, { vertices = 6, seed = null, relief = 'rolling', direction = 'centered' } = {}) {
     const rng = seed != null ? mulberry32(seed) : Math.random;
 
     // Rayon approximatif d'un polygone régulier de périmètre = distanceKm
@@ -51,11 +51,16 @@ const RPLoops = (() => {
     const reliefJitter = { flat: 0.05, rolling: 0.15, hilly: 0.25, mountain: 0.35 }[relief] || 0.15;
 
     const headings = { north: 0, east: 90, south: 180, west: 270 };
-    const heading = Object.hasOwn(headings, direction) ? headings[direction] : rng() * 360;
+    const oriented = Object.hasOwn(headings, direction);
+    const heading = oriented ? headings[direction] : rng() * 360;
     // Le départ est sur le bord OUEST d'une boucle orientée EST (idem pour
     // les autres caps), et non plus au centre du polygone. C'est la différence
     // entre « premier point vers l'est » et « boucle située à l'est ».
-    const center = RPUtils.destinationPoint(startLatLng, radiusM, heading);
+    // En mode centré, le départ reste à l'intérieur de la boucle. Un léger
+    // décalage évite un polygone parfaitement symétrique, difficile à router
+    // sur les petites routes. L'ancienne valeur enregistrée "random" suit
+    // aussi ce comportement pour conserver les réglages existants.
+    const center = RPUtils.destinationPoint(startLatLng, radiusM * (oriented ? 1 : 0.28), heading);
     const points = [];
     for (let i = 1; i < n; i += 1) {
       const bearing = (heading + 180 + i * 360 / n) % 360;
@@ -66,7 +71,7 @@ const RPLoops = (() => {
   }
 
   /** Boucle aléatoire : mêmes principes, mais graine et nombre de sommets tirés aléatoirement à chaque appel. */
-  function generateRandomLoopWaypoints(startLatLng, distanceKm, relief, direction = 'random') {
+  function generateRandomLoopWaypoints(startLatLng, distanceKm, relief, direction = 'centered') {
     const vertices = 6 + Math.floor(Math.random() * 4); // 6 à 9 sommets
     const seed = Math.floor(Math.random() * 1e9);
     return generateLoopWaypoints(startLatLng, distanceKm, { vertices, seed, relief, direction });
@@ -227,7 +232,7 @@ const RPLoops = (() => {
       }
     }
     if (trimmableCoords) return trimmableCoords;
-    if (requireUniqueRoads || direction !== 'random') throw new Error('Aucune boucle respectant la direction et sans tronçon répété trouvée en cinq essais. Change la distance, le cap ou les critères.');
+    if (requireUniqueRoads || direction !== 'random' && direction !== 'centered') throw new Error('Aucune boucle respectant la direction et sans tronçon répété trouvée en cinq essais. Change la distance, le cap ou les critères.');
     RPUtils.debugLog(`Aucune boucle sans aller-retour trouvée après ${maxAttempts} tentatives, utilisation de la dernière forme générée.`, 'warn');
     return lastCoords;
   }

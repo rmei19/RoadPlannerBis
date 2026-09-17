@@ -42,3 +42,9 @@
 @media (min-width: 1200px) {
   :root { --panel-width-desktop: 440px; }
 }
+
+@media (min-width: 768px) {
+  #map { top: var(--topbar-height); }
+  .panel { top: var(--topbar-height) !important; height: calc(100% - var(--topbar-height)); }
+  .panel-scroll { padding-top: 0; }
+}

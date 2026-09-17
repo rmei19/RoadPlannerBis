@@ -45,11 +45,10 @@
   <button id="btn-dismiss-warning" aria-label="Fermer">✕</button>
 </div>
 
-<!-- ===================== CARTE PLEIN ECRAN ===================== -->
-<div id="map"></div>
-
+<header class="tempo-topbar" aria-label="Barre Tempo Routes">
+  <div class="tempo-topbar-inner">
 <div class="suite-switcher" id="suite-switcher">
-  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.4.0</span> ▾</button>
+  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.5.0</span> ▾</button>
   <nav id="suite-menu" class="suite-menu" aria-label="Applications Tempo" hidden>
     <a href="https://octopi.tail2fca2d.ts.net:8443/">Tempo · Agenda</a>
     <a href="https://rmei19.github.io/GPXStravaLike/">Tempo · Traces</a>
@@ -76,25 +75,25 @@
   <svg id="icon-theme-light" viewBox="0 0 24 24" width="19" height="19" hidden><path fill="currentColor" d="M12 7a5 5 0 100 10 5 5 0 000-10zM12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="2" stroke-linecap="round" fill="none"/></svg>
 </button>
 
+  </div>
+</header>
+
+<!-- ===================== CARTE PLEIN ECRAN ===================== -->
+<div id="map"></div>
+
 <!-- ===================== BARRE LATERALE DESKTOP / PANNEAU COULISSANT MOBILE ===================== -->
 <div id="panel" class="panel" data-state="half">
 
   <!-- Poignée de glissement (mobile uniquement) -->
-  <div id="panel-handle" class="panel-handle" aria-label="Glisser pour agrandir ou réduire">
-    <span class="handle-bar"></span>
-  </div>
+  <button id="panel-handle" type="button" class="panel-handle" aria-label="Déplier ou réduire les options du parcours" aria-controls="panel-content">
+    <span class="handle-bar" aria-hidden="true"></span>
+    <span class="handle-label">Préparer mon parcours</span>
+  </button>
 
-  <div class="panel-scroll">
+  <div class="panel-scroll" id="panel-content">
 
-    <!-- ---- Onglets de navigation du panneau ---- -->
-    <nav class="panel-tabs" role="tablist">
-      <button class="tab-btn is-active" data-tab="search" role="tab" aria-selected="true">Rechercher</button>
-      <button class="tab-btn" data-tab="criteria" role="tab" aria-selected="false">Critères</button>
-      <button class="tab-btn" data-tab="results" role="tab" aria-selected="false">Parcours</button>
-    </nav>
+    <section class="flow-section" id="tab-search">
 
-    <!-- ================= ONGLET RECHERCHE ================= -->
-    <section class="tab-panel is-active" id="tab-search">
 
       <div class="field-group">
         <label class="field-label" for="input-start">Départ</label>
@@ -179,10 +178,10 @@
       <div class="field-group" id="loop-direction-group" hidden>
         <label class="field-label" for="select-loop-direction">Direction de départ de la boucle</label>
         <select id="select-loop-direction" class="select-input">
-          <option value="random">Aléatoire</option><option value="north">Nord</option>
+          <option value="centered">Centré</option><option value="north">Nord</option>
           <option value="east">Est</option><option value="south">Sud</option><option value="west">Ouest</option>
         </select>
-        <p class="field-hint">La boucle est placée dans cette direction. Si les routes imposent un grand détour inverse, elle sera rejetée.</p>
+        <p class="field-hint">Centré répartit la boucle autour du départ. Nord, Est, Sud et Ouest privilégient la direction choisie.</p>
         <label class="field-label" for="chk-avoid-overlap"><input type="checkbox" id="chk-avoid-overlap" checked> Écarter les boucles qui empruntent deux fois le même tronçon</label>
         <p class="field-hint">Après cinq essais, les petites antennes restantes sont signalées en violet et peuvent être coupées. Un aller-retour volontaire reste intact.</p>
       </div>
@@ -240,12 +239,6 @@
         </select>
       </div>
 
-      <button class="btn-primary btn-generate" id="btn-generate">Générer 3 parcours</button>
-    </section>
-
-    <!-- ================= ONGLET CRITERES ================= -->
-    <section class="tab-panel" id="tab-criteria">
-
       <div class="field-group" id="distance-field">
         <label class="field-label" for="range-distance">Distance souhaitée : <span id="val-distance">60</span> km</label>
         <input type="range" id="range-distance" min="10" max="300" step="5" value="60">
@@ -264,6 +257,13 @@
           <option value="mountain">Haute montagne / cols</option>
         </select>
       </div>
+
+      <button class="btn-primary btn-generate" id="btn-generate">Générer 3 parcours</button>
+    </section>
+
+    <details class="criteria-details" id="criteria-details">
+      <summary><span aria-hidden="true">⚙</span> Réglages avancés <span class="summary-chevron" aria-hidden="true">⌄</span></summary>
+    <section class="flow-section" id="tab-criteria">
 
       <div class="field-group">
         <label class="field-label" for="range-major-roads">Nb max de grandes routes traversées : <span id="val-major-roads">3</span></label>
@@ -312,11 +312,12 @@
       </div>
     </section>
 
-    <!-- ================= ONGLET RESULTATS ================= -->
-    <section class="tab-panel" id="tab-results">
+    </details>
+    <section class="flow-section results-section" id="tab-results">
+      <h2 class="flow-heading">Parcours</h2>
       <div id="results-empty" class="results-empty">
         <p>Aucun parcours généré pour l'instant.</p>
-        <p class="results-empty-sub">Renseignez un départ et lancez la génération depuis l'onglet Rechercher.</p>
+        <p class="results-empty-sub">Renseignez un départ et lancez la génération ci-dessus.</p>
       </div>
       <div id="results-list" class="results-list"></div>
     </section>
