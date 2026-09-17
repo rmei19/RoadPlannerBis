@@ -254,65 +254,31 @@ const RPMap = (() => {
     document.getElementById('map').style.cursor = '';
   }
 
-  /**
-   * Construit UNE étiquette km/temps par segment "utile" (départ->point de
-   * passage, point de passage->point de passage, point de passage->arrivée,
-   * ou simplement départ->arrivée s'il n'y a aucun point de passage) plutôt
-   * que des étiquettes à intervalles fixes le long du tracé. boundaryPoints
-   * est la liste ordonnée des points définis par l'utilisateur (pas les
-   * points synthétiques générés pour les boucles/détours).
-   */
-  function buildRouteLabelMarkers(latlngs, color, avgSpeedKmh, boundaryPoints, routeIndex = 0) {
+  /** Une seule étiquette pour le total du parcours, au centre de son emprise. */
+  function buildRouteLabelMarkers(latlngs, color, avgSpeedKmh, routeIndex = 0) {
     const n = latlngs.length;
-    if (n < 2 || !boundaryPoints || boundaryPoints.length < 2) return [];
+    if (n < 2 || !avgSpeedKmh) return [];
 
     const cumDist = [0];
     for (let i = 1; i < n; i += 1) {
       cumDist.push(cumDist[i - 1] + RPUtils.haversineDistance(latlngs[i - 1], latlngs[i]));
     }
 
-    // Pour chaque point défini par l'utilisateur, trouve l'index du point du
-    // tracé réel le plus proche (le moteur de routage "colle" le point au réseau).
-    let boundaryIndices = boundaryPoints.map((bp) => {
-      let closestIdx = 0;
-      let closestDist = Infinity;
-      for (let i = 0; i < n; i += 1) {
-        const d = RPUtils.haversineDistance(bp, latlngs[i]);
-        if (d < closestDist) { closestDist = d; closestIdx = i; }
-      }
-      return closestIdx;
-    }).sort((a, b) => a - b);
-
-    // Dédoublonne les index identiques (ex. boucle sans point de passage :
-    // départ et arrivée sont le même point géographique -> même index trouvé).
-    boundaryIndices = [...new Set(boundaryIndices)];
-    if (boundaryIndices.length < 2) boundaryIndices = [0, n - 1];
-
-    // Décalage vertical fixe (en pixels écran, donc stable quel que soit le
-    // zoom) selon l'itinéraire : évite que les étiquettes de 2 tracés qui
-    // partagent la même route ne s'affichent exactement au même endroit.
-    const labelOffsetPx = routeIndex * 42;
-
-    const markers = [];
-    for (let s = 0; s < boundaryIndices.length - 1; s += 1) {
-      const idxA = boundaryIndices[s];
-      const idxB = boundaryIndices[s + 1];
-      if (idxB <= idxA) continue;
-      const segDistM = cumDist[idxB] - cumDist[idxA];
-      if (segDistM < 200) continue; // segment trop court pour justifier une étiquette
-      const segKm = segDistM / 1000;
-      const segMinutes = (segKm / avgSpeedKmh) * 60;
-      const midIdx = idxA + Math.floor((idxB - idxA) / 2);
-      const text = `${segKm.toFixed(1)} km · ${RPUtils.formatDuration(segMinutes * 60)}`;
-      const icon = L.divIcon({
-        className: '',
-        html: `<div class="rp-route-label" style="--label-color:${color}; --label-offset:${labelOffsetPx}px">${text}</div>`,
-        iconSize: null,
-        iconAnchor: [0, 0],
-      });
-      markers.push(L.marker(latlngs[midIdx], { icon, interactive: false, keyboard: false }));
+    const total = cumDist[n - 1];
+    if (total < 200) return [];
+    let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
+    for (const [lat, lng] of latlngs) {
+      minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat);
+      minLng = Math.min(minLng, lng); maxLng = Math.max(maxLng, lng);
     }
-    return markers;
+    const point = [(minLat + maxLat) / 2, (minLng + maxLng) / 2];
+    const text = `${(total / 1000).toFixed(1)} km · ${RPUtils.formatDuration(total / 1000 / avgSpeedKmh * 3600)}`;
+    const icon = L.divIcon({
+      className: '',
+      html: `<div class="rp-route-label" style="--label-color:${color}; --label-offset:${routeIndex * 34}px">${text}</div>`,
+      iconSize: null, iconAnchor: [0, 0],
+    });
+    return [L.marker(point, { icon, interactive: false, keyboard: false })];
   }
 
   /**
@@ -404,11 +370,10 @@ const RPMap = (() => {
       });
     });
 
-    const labelMarkers = options.avgSpeedKmh && options.boundaryPoints
-      ? buildRouteLabelMarkers(latlngs, color, options.avgSpeedKmh, options.boundaryPoints, options.routeIndex || 0)
+    const labelMarkers = options.avgSpeedKmh
+      ? buildRouteLabelMarkers(latlngs, color, options.avgSpeedKmh, options.routeIndex || 0)
       : [];
     layers.push(...labelMarkers);
-    layers.push(...buildDirectionMarkers(latlngs, color, options.routeIndex || 0));
 
     // featureGroup (pas layerGroup) : garantit une méthode getBounds()
     // fiable une fois ce groupe imbriqué dans le featureGroup englobant de
@@ -420,45 +385,6 @@ const RPMap = (() => {
     routeLayers[routeId] = group;
     routeGeometries[routeId] = { latlngs, color };
     return group;
-  }
-
-  /** Jalons cumulatifs de 10 km, flèche orientée dans le sens réel du GPX.
-   * Pour les petits parcours, une flèche centrale indique au moins le sens.
-   * Les jalons sont liés au même groupe que la route (masquage/coupe compris).
-   */
-  function buildDirectionMarkers(latlngs, color, routeIndex = 0) {
-    if (!latlngs || latlngs.length < 2) return [];
-    const cumulative = [0];
-    for (let i = 1; i < latlngs.length; i++) cumulative.push(cumulative[i - 1] + RPUtils.haversineDistance(latlngs[i - 1], latlngs[i]));
-    const total = cumulative.at(-1);
-    if (total < 200) return [];
-    const positions = [];
-    if (total < 10000) positions.push({ distance: total / 2, label: '' });
-    else for (let km = 10; km * 1000 < total - 1000 && positions.length < 20; km += 10) {
-      positions.push({ distance: km * 1000, label: `${km} km` });
-    }
-    if (!positions.length) positions.push({ distance: total / 2, label: '' });
-    let index = 1;
-    return positions.map(({ distance, label }) => {
-      while (index < cumulative.length - 1 && cumulative[index] < distance) index++;
-      const prev = latlngs[index - 1], next = latlngs[index];
-      const fraction = cumulative[index] > cumulative[index - 1]
-        ? (distance - cumulative[index - 1]) / (cumulative[index] - cumulative[index - 1]) : 0;
-      const lat = prev[0] + (next[0] - prev[0]) * fraction;
-      const lng = prev[1] + (next[1] - prev[1]) * fraction;
-      const ahead = latlngs[Math.min(latlngs.length - 1, index + 2)];
-      const angle = Math.atan2((ahead[1] - prev[1]) * Math.cos(lat * Math.PI / 180), ahead[0] - prev[0]) * 180 / Math.PI;
-      const marker = L.marker([lat, lng], {
-        interactive: false,
-        keyboard: false,
-        zIndexOffset: 50,
-        icon: L.divIcon({
-          className: 'rp-direction-icon', iconSize: [76, 28], iconAnchor: [38, 14],
-          html: `<span class="rp-direction-marker" style="--marker-color:${color};--marker-offset:${routeIndex * 21}px"><span class="rp-direction-arrow" style="transform:rotate(${angle}deg)">↑</span>${label}</span>`,
-        }),
-      });
-      return marker;
-    });
   }
 
   function setRouteVisibility(routeId, visible) {

@@ -226,6 +226,37 @@ const RPLoops = (() => {
     return ring.flatMap((anchor, i) => i < bins.length ? [anchor, ...bins[i]] : [anchor]);
   }
 
+  /** Les points posés par l'utilisateur définissent la boucle. Un seul point
+   * demande un côté de retour distinct ; pour plusieurs points, l'anneau
+   * direct est tenté d'abord, sans imposer le polygone artificiel complet.
+   * Les variantes suivantes n'ajoutent qu'un point sur le retour si besoin.
+   */
+  function buildUserGuidedLoop(start, waypoints, distanceKm, attempt = 1, direction = 'centered') {
+    const direct = [start, ...waypoints, start];
+    if (waypoints.length > 1 && attempt === 1) return direct;
+    const last = waypoints.at(-1);
+    const length = RPUtils.haversineDistance(last, start);
+    if (length < 500) return direct;
+    const bearing = RPUtils.bearingBetween(last, start);
+    const headings = { north: 0, east: 90, south: 180, west: 270 };
+    const oriented = Object.hasOwn(headings, direction);
+    const candidates = [1, -1].map((sign) => {
+      const midpoint = RPUtils.destinationPoint(last, length * 0.5, bearing);
+      const offset = Math.max(1200, Math.min(length * 0.7, distanceKm * 1000 * (attempt > 3 ? 0.18 : 0.28)));
+      const point = RPUtils.destinationPoint(midpoint, offset, bearing + sign * 90);
+      if (!oriented) return { point, score: 0 };
+      const target = headings[direction] * Math.PI / 180;
+      const dx = (point[1] - start[1]) * Math.cos(start[0] * Math.PI / 180);
+      const dy = point[0] - start[0];
+      return { point, score: dx * Math.sin(target) + dy * Math.cos(target) };
+    });
+    const preferred = oriented && candidates[0].score !== candidates[1].score
+      ? (candidates[0].score > candidates[1].score ? 0 : 1)
+      : 0;
+    const side = (attempt - 1) % 2 === 0 ? preferred : 1 - preferred;
+    return [start, ...waypoints, candidates[side].point, start];
+  }
+
   /** Vérifie les passages réels dans l'ordre sélectionné, après routage. */
   function validateUserWaypoints(latlngs, waypoints, toleranceM = 200) {
     let previousIndex = 0;
@@ -258,8 +289,9 @@ const RPLoops = (() => {
     let lastCoords = null;
     let trimmableCoords = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-      const loopPts = generatorFn();
-      const coords = insertUserWaypoints(start, loopPts, userWaypoints);
+      const coords = userWaypoints.length
+        ? buildUserGuidedLoop(start, userWaypoints, distanceKm, attempt, direction)
+        : [start, ...generatorFn(), start];
       lastCoords = coords;
       try {
         // BRouter (GET, gratuit, rapide) sert uniquement de test de forme,
@@ -390,5 +422,5 @@ const RPLoops = (() => {
     }
   }
 
-  return { generateLoopWaypoints, generateRandomLoopWaypoints, generateDetourWaypoints, buildCoordinatesForMode, buildLoopCoordinatesForRoute, validateLoopRoute, validateUserWaypoints, insertUserWaypoints };
+  return { generateLoopWaypoints, generateRandomLoopWaypoints, generateDetourWaypoints, buildCoordinatesForMode, buildLoopCoordinatesForRoute, validateLoopRoute, validateUserWaypoints, insertUserWaypoints, buildUserGuidedLoop };
 })();
