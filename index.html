@@ -48,7 +48,7 @@
 <header class="tempo-topbar" aria-label="Barre Tempo Routes">
   <div class="tempo-topbar-inner">
 <div class="suite-switcher" id="suite-switcher">
-  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.5.0</span> ▾</button>
+  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.6.0</span> ▾</button>
   <nav id="suite-menu" class="suite-menu" aria-label="Applications Tempo" hidden>
     <a href="https://octopi.tail2fca2d.ts.net:8443/">Tempo · Agenda</a>
     <a href="https://rmei19.github.io/GPXStravaLike/">Tempo · Traces</a>
@@ -183,7 +183,7 @@
         </select>
         <p class="field-hint">Centré répartit la boucle autour du départ. Nord, Est, Sud et Ouest privilégient la direction choisie.</p>
         <label class="field-label" for="chk-avoid-overlap"><input type="checkbox" id="chk-avoid-overlap" checked> Écarter les boucles qui empruntent deux fois le même tronçon</label>
-        <p class="field-hint">Après cinq essais, les petites antennes restantes sont signalées en violet et peuvent être coupées. Un aller-retour volontaire reste intact.</p>
+        <p class="field-hint">Les courtes antennes reconnues avec certitude sont coupées automatiquement. Les autres sont signalées en violet pour une coupe manuelle. Un aller-retour volontaire reste intact.</p>
       </div>
 
       <div class="field-group" id="city-tour-field-group" style="display:none;">
@@ -242,20 +242,11 @@
       <div class="field-group" id="distance-field">
         <label class="field-label" for="range-distance">Distance souhaitée : <span id="val-distance">60</span> km</label>
         <input type="range" id="range-distance" min="10" max="300" step="5" value="60">
-        <label class="field-label" for="range-tolerance">Tolérance : ± <span id="val-tolerance">10</span> %</label>
-        <input type="range" id="range-tolerance" min="0" max="50" step="5" value="10">
       </div>
 
       <div class="field-group">
         <label class="field-label" for="range-elevation">Dénivelé souhaité : <span id="val-elevation">1000</span> m D+</label>
         <input type="range" id="range-elevation" min="0" max="4000" step="50" value="1000">
-        <label class="field-label" for="select-relief">Type de relief</label>
-        <select id="select-relief" class="select-input">
-          <option value="flat">Plat</option>
-          <option value="rolling" selected>Vallonné</option>
-          <option value="hilly">Montagneux</option>
-          <option value="mountain">Haute montagne / cols</option>
-        </select>
       </div>
 
       <button class="btn-primary btn-generate" id="btn-generate">Générer 3 parcours</button>

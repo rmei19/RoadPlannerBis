@@ -28,20 +28,20 @@ const RPOverlaps = (() => {
       points[lo - 1][1] + f * (points[lo][1] - points[lo - 1][1])];
   }
 
-  function isReturnOnSameRoad(points, cumulative, i, j, thresholdM) {
+  function isReturnOnSameRoad(points, cumulative, i, j, thresholdM, minDistanceM) {
     const span = cumulative[j] - cumulative[i];
-    if (span < 350) return false;
+    if (span < minDistanceM) return false;
     let matches = 0;
     for (let sample = 1; sample <= 7; sample++) {
       const delta = (span / 2) * (sample / 8);
       const outbound = positionAt(points, cumulative, cumulative[i] + delta);
       const inbound = positionAt(points, cumulative, cumulative[j] - delta);
-      if (RPUtils.haversineDistance(outbound, inbound) < Math.max(35, thresholdM * 2)) matches++;
+      if (RPUtils.haversineDistance(outbound, inbound) < Math.max(18, thresholdM * 1.8)) matches++;
     }
     return matches >= 6;
   }
 
-  function findSegments(points, { thresholdM = 22, maxPoints = 20000 } = {}) {
+  function findSegments(points, { thresholdM = 22, minDistanceM = 350, maxDistanceM = Infinity, maxPoints = 20000 } = {}) {
     if (!Array.isArray(points) || points.length < 8 || points.length > maxPoints) return [];
     const cumulative = distances(points);
     const total = cumulative[cumulative.length - 1];
@@ -69,12 +69,12 @@ const RPOverlaps = (() => {
       candidates.sort((a, b) => a - b);
       let match = null;
       for (const j of candidates) {
-        if (j < i + 6) continue;
+        if (j < i + 3) continue;
         const traveled = cumulative[j] - cumulative[i];
-        if (traveled < 350 || traveled > total * 0.65) continue;
+        if (traveled < minDistanceM || traveled > Math.min(maxDistanceM, total * 0.65)) continue;
         const gapM = RPUtils.haversineDistance(points[i], points[j]);
         if (gapM > thresholdM) continue;
-        if (!isReturnOnSameRoad(points, cumulative, i, j, thresholdM)) continue;
+        if (!isReturnOnSameRoad(points, cumulative, i, j, thresholdM, minDistanceM)) continue;
         match = { startIndex: i, endIndex: j, removedDistanceM: traveled - gapM };
         break;
       }
@@ -126,5 +126,23 @@ const RPOverlaps = (() => {
     return Math.max(0, oldDistance - newDistance);
   }
 
-  return { findSegments, trimStats };
+  /** Coupe seulement les antennes COURTES et pratiquement superposées.
+   * Les longs allers-retours restent manuels, et la forme volontaire A→B→A
+   * n'appelle jamais cette fonction. Les index sont recalculés après chaque
+   * coupe ; chaque boucle reparcourt le nouveau tracé et son profil d'altitude.
+   */
+  function trimShortSpurs(stats, { maxCuts = 4, maxSpurM = 1400 } = {}) {
+    let removedM = 0, cuts = 0;
+    for (let attempt = 0; attempt < maxCuts; attempt++) {
+      const segment = findSegments(stats.latlngs, { thresholdM: 14, minDistanceM: 120, maxDistanceM: maxSpurM + 16 })
+        .find(s => s.removedDistanceM <= maxSpurM
+          && RPUtils.haversineDistance(stats.latlngs[s.startIndex], stats.latlngs[s.endIndex]) <= 16);
+      if (!segment) break;
+      removedM += trimStats(stats, segment);
+      cuts++;
+    }
+    return { cuts, removedM };
+  }
+
+  return { findSegments, trimStats, trimShortSpurs };
 })();

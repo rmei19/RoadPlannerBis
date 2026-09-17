@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.5.0';
+  const APP_VERSION = '2.6.0';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -754,6 +754,10 @@
               RPUi.setLoading(true, `Calcul de ${routeDefs.length} parcours en cours…`, handleCancelGenerate);
             }
             const candidate = await RPRouting.computeRoute(coordinates, def, options, criteria);
+            if (isLoopMode) {
+              const cleaned = RPOverlaps.trimShortSpurs(candidate);
+              if (cleaned.cuts) RPUtils.debugLog(`${cleaned.cuts} petite(s) antenne(s) coupée(s) automatiquement (${Math.round(cleaned.removedM)} m).`, 'info');
+            }
             const check = isLoopMode
               ? RPLoops.validateLoopRoute(candidate.latlngs, startLatLng, criteria.loopDirection, criteria.avoidOverlap)
               : { ok: true };

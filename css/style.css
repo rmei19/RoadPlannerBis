@@ -844,3 +844,14 @@ body.has-protocol-warning .fab { margin-top: 44px; }
 
 body.has-protocol-warning .tempo-topbar { top: 44px; }
 body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
+
+/* Sens du parcours et distance cumulée, lisibles sur fond clair ou sombre. */
+.rp-direction-icon { pointer-events: none; }
+.rp-direction-marker {
+  position: absolute; left: 50%; top: 50%; display: inline-flex; align-items: center; gap: 3px;
+  transform: translate(-50%, calc(-50% - var(--marker-offset)));
+  white-space: nowrap; padding: 3px 6px; border: 2px solid var(--marker-color);
+  border-radius: 15px; background: var(--color-surface); color: var(--color-text);
+  font: 700 11px var(--font-body); box-shadow: 0 1px 6px #0009;
+}
+.rp-direction-arrow { display: inline-block; color: var(--marker-color); font-size: 17px; line-height: 12px; }

@@ -130,7 +130,6 @@ const RPUi = (() => {
   function initCriteriaFields() {
     const bindings = [
       ['range-distance', 'val-distance', (v) => v],
-      ['range-tolerance', 'val-tolerance', (v) => v],
       ['range-elevation', 'val-elevation', (v) => v],
       ['range-major-roads', 'val-major-roads', (v) => v],
       ['range-lights', 'val-lights', (v) => v],

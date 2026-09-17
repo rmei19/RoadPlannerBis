@@ -408,6 +408,7 @@ const RPMap = (() => {
       ? buildRouteLabelMarkers(latlngs, color, options.avgSpeedKmh, options.boundaryPoints, options.routeIndex || 0)
       : [];
     layers.push(...labelMarkers);
+    layers.push(...buildDirectionMarkers(latlngs, color, options.routeIndex || 0));
 
     // featureGroup (pas layerGroup) : garantit une méthode getBounds()
     // fiable une fois ce groupe imbriqué dans le featureGroup englobant de
@@ -419,6 +420,45 @@ const RPMap = (() => {
     routeLayers[routeId] = group;
     routeGeometries[routeId] = { latlngs, color };
     return group;
+  }
+
+  /** Jalons cumulatifs de 10 km, flèche orientée dans le sens réel du GPX.
+   * Pour les petits parcours, une flèche centrale indique au moins le sens.
+   * Les jalons sont liés au même groupe que la route (masquage/coupe compris).
+   */
+  function buildDirectionMarkers(latlngs, color, routeIndex = 0) {
+    if (!latlngs || latlngs.length < 2) return [];
+    const cumulative = [0];
+    for (let i = 1; i < latlngs.length; i++) cumulative.push(cumulative[i - 1] + RPUtils.haversineDistance(latlngs[i - 1], latlngs[i]));
+    const total = cumulative.at(-1);
+    if (total < 200) return [];
+    const positions = [];
+    if (total < 10000) positions.push({ distance: total / 2, label: '' });
+    else for (let km = 10; km * 1000 < total - 1000 && positions.length < 20; km += 10) {
+      positions.push({ distance: km * 1000, label: `${km} km` });
+    }
+    if (!positions.length) positions.push({ distance: total / 2, label: '' });
+    let index = 1;
+    return positions.map(({ distance, label }) => {
+      while (index < cumulative.length - 1 && cumulative[index] < distance) index++;
+      const prev = latlngs[index - 1], next = latlngs[index];
+      const fraction = cumulative[index] > cumulative[index - 1]
+        ? (distance - cumulative[index - 1]) / (cumulative[index] - cumulative[index - 1]) : 0;
+      const lat = prev[0] + (next[0] - prev[0]) * fraction;
+      const lng = prev[1] + (next[1] - prev[1]) * fraction;
+      const ahead = latlngs[Math.min(latlngs.length - 1, index + 2)];
+      const angle = Math.atan2((ahead[1] - prev[1]) * Math.cos(lat * Math.PI / 180), ahead[0] - prev[0]) * 180 / Math.PI;
+      const marker = L.marker([lat, lng], {
+        interactive: false,
+        keyboard: false,
+        zIndexOffset: 50,
+        icon: L.divIcon({
+          className: 'rp-direction-icon', iconSize: [76, 28], iconAnchor: [38, 14],
+          html: `<span class="rp-direction-marker" style="--marker-color:${color};--marker-offset:${routeIndex * 21}px"><span class="rp-direction-arrow" style="transform:rotate(${angle}deg)">↑</span>${label}</span>`,
+        }),
+      });
+      return marker;
+    });
   }
 
   function setRouteVisibility(routeId, visible) {

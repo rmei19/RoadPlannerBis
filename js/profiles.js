@@ -132,9 +132,9 @@ const RPProfiles = (() => {
 
     return {
       distanceKm: parseFloat(getVal('range-distance')) || 60,
-      toleranceRatio: (parseFloat(getVal('range-tolerance')) || 10) / 100,
+      toleranceRatio: 0.10,
       elevationTarget: parseFloat(getVal('range-elevation')) || 1000,
-      relief: getVal('select-relief') || 'rolling',
+      relief: 'rolling',
       loopDirection: getVal('select-loop-direction') || 'centered',
       avoidOverlap: document.getElementById('chk-avoid-overlap')?.checked || false,
       maxMajorRoads: parseInt(getVal('range-major-roads'), 10) || 0,

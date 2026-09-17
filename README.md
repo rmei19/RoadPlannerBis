@@ -111,3 +111,7 @@ Sur les boucles générées, une portion aller-retour reconnue sur la même voie
 ## Version 2.5.0 — Panneau unique et boucle centrée
 
 La navigation Rechercher/Critères/Parcours est réunie dans un panneau défilant avec réglages avancés repliables et résultats dans la même vue. La barre Tempo regroupe le menu de la suite, la localisation, le fond de carte et le thème, sur mobile comme sur ordinateur. Dans la direction des boucles, **Centré** répartit les points autour du départ ; les quatre points cardinaux continuent de privilégier un secteur. L’ancienne préférence `random` reste comprise comme `centered`. La clé de démonstration intégrée a été rétablie à la demande du propriétaire (voir Configuration).
+
+## Version 2.6.0 — Parcours plus lisibles
+
+La tolérance et le type de relief ne sont plus demandés dans l'interface : les valeurs internes restent à ±10 % et « vallonné » pour le calcul des boucles. Le réglage de D+ reste accessible. Les boucles sont nettoyées automatiquement des petites antennes (jusqu'à 1,4 km, avec un contrôle strict de la route empruntée) après le calcul et avant l'affichage. Si le retrait est incertain, la portion reste visible en violet et peut être coupée manuellement ; les vrais aller-retours ne sont pas touchés. Des jalons cumulatifs tous les 10 km indiquent le sens de circulation sur la carte, avec une flèche centrale pour les parcours courts. Le profil et les fichiers exportés utilisent le tracé nettoyé.
