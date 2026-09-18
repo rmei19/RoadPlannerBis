@@ -364,10 +364,18 @@ const RPLoops = (() => {
         lastReason = check.reason;
         RPUtils.debugLog(`Tentative ${attempt}/${maxAttempts} : ${check.reason} Nouvel essai…`, 'warn');
       } catch (err) {
-        // Si même l'aperçu échoue (réseau, etc.), on ne bloque pas la
-        // génération pour autant : on renvoie les coordonnées telles quelles.
+        // Si le serveur d'aperçu tombe en erreur APRÈS qu'un candidat correct
+        // a déjà été trouvé, ne jamais perdre ce candidat. C'était le cas typique
+        // des erreurs "Please, retry later!" qui annulaient une boucle pourtant
+        // exploitable trouvée quelques tentatives plus tôt.
+        if (bestFallback) {
+          bestFallback.coords._rpRelaxedOverlap = true;
+          bestFallback.coords._rpFallbackOverlapM = bestFallback.extraM;
+          RPUtils.debugLog(`Aperçu indisponible (${err.message}) : meilleur candidat déjà trouvé conservé (${bestFallback.actualKm.toFixed(1)} km, ${(bestFallback.extraM / 1000).toFixed(1)} km de chevauchement).`, 'warn');
+          return bestFallback.coords;
+        }
+        // Sans candidat connu, on laisse le calcul final tenter cette géométrie.
         RPUtils.debugLog(`Aperçu de boucle impossible à valider (${err.message}), poursuite sans validation.`, 'warn');
-        // Le tracé final sera contrôlé après routage ORS/BRouter dans app.js.
         return coords;
       }
     }

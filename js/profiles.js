@@ -27,12 +27,10 @@
  *  - Itinéraire 3 : profil ORS différent (cycling-regular, plus tolérant
  *    aux chemins) + évite grands axes et escaliers, poids "green" maximal.
  *
- * Limite connue : l'API ORS ne propose pas de paramètre direct "éviter le
- * non-goudronné" pour les profils vélo (contrairement au profil "wheelchair").
- * Le "100% béton" des itinéraires 1 et 2 s'obtient donc en s'appuyant sur le
- * profil "cycling-road" (conçu par ORS pour privilégier les routes goudronnées)
- * plutôt que sur un filtre explicite. Le % de surface non-pavée réellement
- * emprunté reste visible dans les statistiques du parcours (extra_info surface).
+ * En vélo de route, l'itinéraire 2 utilise côté BRouter le profil
+ * fastbike-verylowtraffic : il garde l'objectif petites routes / faible trafic
+ * tout en pénalisant fortement les surfaces non goudronnées. ORS conserve
+ * cycling-road quand il peut être utilisé.
  */
 
 const RPProfiles = (() => {
@@ -44,7 +42,7 @@ const RPProfiles = (() => {
   const BIKE_TYPE_ENGINE_PROFILES = {
     road: {
       principal: { ors: 'cycling-road', brouter: 'fastbike' },
-      bis: { ors: 'cycling-road', brouter: 'trekking' },
+      bis: { ors: 'cycling-road', brouter: 'fastbike-verylowtraffic' },
       cyclable: { ors: 'cycling-regular', brouter: 'safety' },
     },
     vtt: {

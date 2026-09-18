@@ -157,3 +157,9 @@ Les modes Boucle et Boucle aléatoire affichent les points de passage. Ceux-ci s
 - Cartes de résultat remontées sur mobile et navigation interne du panneau corrigée.
 - Ajout des fonds OSM France et Satellite.
 - Petit vélo dans l’en-tête Tempo Routes.
+
+
+## Version 2.9.0 — route goudronnée et secours de boucle
+
+- En vélo de route, l’itinéraire 2 utilise `fastbike-verylowtraffic` côté BRouter afin de conserver des petites routes calmes tout en pénalisant fortement les surfaces non goudronnées.
+- Si BRouter renvoie une erreur de type `Please, retry later!` après qu’un candidat de boucle acceptable a déjà été trouvé, RoadPlanner conserve désormais ce candidat au lieu de perdre toute la génération.
