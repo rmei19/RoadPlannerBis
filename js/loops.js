@@ -226,35 +226,29 @@ const RPLoops = (() => {
     return ring.flatMap((anchor, i) => i < bins.length ? [anchor, ...bins[i]] : [anchor]);
   }
 
-  /** Les points posés par l'utilisateur définissent la boucle. Un seul point
-   * demande un côté de retour distinct ; pour plusieurs points, l'anneau
-   * direct est tenté d'abord, sans imposer le polygone artificiel complet.
-   * Les variantes suivantes n'ajoutent qu'un point sur le retour si besoin.
+  /** Construit un grand tour autour des points imposés. L'extension dans la
+   * direction demandée et le retour latéral sont dimensionnés par la distance
+   * souhaitée, et non par la distance départ → dernier point (parfois 3 km).
+   * scale est corrigé ensuite avec la longueur réellement routée par BRouter.
    */
-  function buildUserGuidedLoop(start, waypoints, distanceKm, attempt = 1, direction = 'centered') {
-    const direct = [start, ...waypoints, start];
-    if (waypoints.length > 1 && attempt === 1) return direct;
-    const last = waypoints.at(-1);
-    const length = RPUtils.haversineDistance(last, start);
-    if (length < 500) return direct;
-    const bearing = RPUtils.bearingBetween(last, start);
+  function buildUserGuidedLoop(start, waypoints, distanceKm, attempt = 1, direction = 'centered', scale = 1) {
     const headings = { north: 0, east: 90, south: 180, west: 270 };
     const oriented = Object.hasOwn(headings, direction);
-    const candidates = [1, -1].map((sign) => {
-      const midpoint = RPUtils.destinationPoint(last, length * 0.5, bearing);
-      const offset = Math.max(1200, Math.min(length * 0.7, distanceKm * 1000 * (attempt > 3 ? 0.18 : 0.28)));
-      const point = RPUtils.destinationPoint(midpoint, offset, bearing + sign * 90);
-      if (!oriented) return { point, score: 0 };
-      const target = headings[direction] * Math.PI / 180;
-      const dx = (point[1] - start[1]) * Math.cos(start[0] * Math.PI / 180);
-      const dy = point[0] - start[0];
-      return { point, score: dx * Math.sin(target) + dy * Math.cos(target) };
-    });
-    const preferred = oriented && candidates[0].score !== candidates[1].score
-      ? (candidates[0].score > candidates[1].score ? 0 : 1)
-      : 0;
-    const side = (attempt - 1) % 2 === 0 ? preferred : 1 - preferred;
-    return [start, ...waypoints, candidates[side].point, start];
+    const heading = oriented ? headings[direction] : RPUtils.bearingBetween(start, waypoints[0]);
+    const radians = heading * Math.PI / 180;
+    const lngScale = 111195 * Math.cos(start[0] * Math.PI / 180);
+    const projection = (p) => (p[1] - start[1]) * lngScale * Math.sin(radians)
+      + (p[0] - start[0]) * 111195 * Math.cos(radians);
+    const furthest = Math.max(0, ...waypoints.map(projection));
+    const reach = Math.max(distanceKm * 300 * scale, furthest + distanceKm * 80 * scale);
+    const tip = RPUtils.destinationPoint(start, reach, heading);
+    const side = attempt > 3 ? -1 : 1;
+    const returnMidpoint = RPUtils.destinationPoint(start, reach * 0.55, heading);
+    const flank = RPUtils.destinationPoint(returnMidpoint, distanceKm * 140 * scale, heading + side * 90);
+    const last = waypoints.at(-1);
+    // Évite deux points quasi superposés qui provoqueraient une antenne.
+    const addTip = RPUtils.haversineDistance(last, tip) > 1200;
+    return [start, ...waypoints, ...(addTip ? [tip] : []), flank, start];
   }
 
   /** Vérifie les passages réels dans l'ordre sélectionné, après routage. */
@@ -285,12 +279,13 @@ const RPLoops = (() => {
    * maxAttempts et renvoie la dernière tentative telle quelle (avec un
    * avertissement dans le journal) plutôt que de bloquer la génération.
    */
-  async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5, requireUniqueRoads = false, direction = 'random', userWaypoints = []) {
+  async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5, requireUniqueRoads = false, direction = 'random', userWaypoints = [], toleranceRatio = 0.1) {
     let lastCoords = null;
     let trimmableCoords = null;
+    let scale = 1;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const coords = userWaypoints.length
-        ? buildUserGuidedLoop(start, userWaypoints, distanceKm, attempt, direction)
+        ? buildUserGuidedLoop(start, userWaypoints, distanceKm, attempt, direction, scale)
         : [start, ...generatorFn(), start];
       lastCoords = coords;
       try {
@@ -299,6 +294,15 @@ const RPLoops = (() => {
         // itinéraire ; le vrai calcul (ORS ou BRouter selon le moteur choisi)
         // se fait séparément juste après, sur ces mêmes coordonnées.
         const preview = await RPRouting.computeRoute(coords, { name: 'aperçu boucle' }, { profile: brouterProfile, brouterProfile }, { routingEngine: 'brouter' });
+        const actualKm = preview.distance / 1000;
+        if (userWaypoints.length && actualKm > 0) {
+          const ratio = distanceKm / actualKm;
+          if (Math.abs(ratio - 1) > Math.max(0.05, toleranceRatio)) {
+            scale = Math.max(0.35, Math.min(3.5, scale * Math.max(0.65, Math.min(1.8, ratio ** 0.8))));
+            RPUtils.debugLog(`Aperçu ${actualKm.toFixed(1)} km pour ${distanceKm} km demandés ; correction de la taille de boucle.`, 'info');
+            continue;
+          }
+        }
         const shape = validateLoopRoute(preview.latlngs, start, direction, requireUniqueRoads);
         const check = shape.ok ? validateUserWaypoints(preview.latlngs, userWaypoints) : shape;
         if (check.ok) {
@@ -332,13 +336,13 @@ const RPLoops = (() => {
       return buildValidatedLoopCoordinates(
         start, criteria.distanceKm, criteria.relief,
         () => generateRandomLoopWaypoints(start, criteria.distanceKm, criteria.relief, criteria.loopDirection),
-        brouterProfile, 5, criteria.avoidOverlap, criteria.loopDirection, userWaypoints
+        brouterProfile, userWaypoints.length ? 7 : 5, criteria.avoidOverlap, criteria.loopDirection, userWaypoints, criteria.toleranceRatio
       );
     }
     return buildValidatedLoopCoordinates(
       start, criteria.distanceKm, criteria.relief,
       () => generateLoopWaypoints(start, criteria.distanceKm, { relief: criteria.relief, direction: criteria.loopDirection }),
-      brouterProfile, 5, criteria.avoidOverlap, criteria.loopDirection, userWaypoints
+      brouterProfile, userWaypoints.length ? 7 : 5, criteria.avoidOverlap, criteria.loopDirection, userWaypoints, criteria.toleranceRatio
     );
   }
 

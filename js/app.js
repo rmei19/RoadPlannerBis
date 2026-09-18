@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.8.1';
+  const APP_VERSION = '2.8.2';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -743,12 +743,14 @@
           const options = RPProfiles.applyUserPreferences(baseOptions, criteria);
 
           let stats = null;
-          const finalAttempts = isLoopMode ? 2 : 1;
+          const finalAttempts = isLoopMode && waypointsLatLng.length ? 3 : isLoopMode ? 2 : 1;
+          let correctedDistanceKm = criteria.distanceKm;
           for (let attempt = 1; attempt <= finalAttempts; attempt += 1) {
             let coordinates = sharedCoordinates;
             if (isLoopMode) {
               RPUi.setLoading(true, `Vérification de la forme — itinéraire "${def.name}"…`, handleCancelGenerate);
-              coordinates = await RPLoops.buildLoopCoordinatesForRoute(state.mode, startLatLng, criteria, options.brouterProfile, waypointsLatLng);
+              coordinates = await RPLoops.buildLoopCoordinatesForRoute(state.mode, startLatLng,
+                { ...criteria, distanceKm: correctedDistanceKm }, options.brouterProfile, waypointsLatLng);
               if (generationCancelled) break;
               RPUi.setLoading(true, `Calcul de ${routeDefs.length} parcours en cours…`, handleCancelGenerate);
             }
@@ -760,9 +762,18 @@
             const shapeCheck = isLoopMode
               ? RPLoops.validateLoopRoute(candidate.latlngs, startLatLng, criteria.loopDirection, criteria.avoidOverlap)
               : { ok: true };
-            const check = shapeCheck.ok && waypointsLatLng.length
+            let check = shapeCheck.ok && waypointsLatLng.length
               ? RPLoops.validateUserWaypoints(candidate.latlngs, waypointsLatLng)
               : shapeCheck;
+            if (check.ok && isLoopMode && waypointsLatLng.length) {
+              const actualKm = candidate.distance / 1000;
+              const tolerance = Math.max(0.05, criteria.toleranceRatio || 0.1);
+              if (Math.abs(actualKm / criteria.distanceKm - 1) > tolerance) {
+                check = { ok: false, reason: `Boucle de ${actualKm.toFixed(1)} km pour ${criteria.distanceKm} km demandés.` };
+                correctedDistanceKm = Math.max(criteria.distanceKm * 0.65,
+                  Math.min(criteria.distanceKm * 1.7, correctedDistanceKm * criteria.distanceKm / actualKm));
+              }
+            }
             if (check.ok) { stats = candidate; break; }
             RPUtils.debugLog(`Résultat routé refusé (essai ${attempt}/${finalAttempts}) : ${check.reason}`, 'warn');
             if (attempt === finalAttempts) throw new Error(isLoopMode ? `${check.reason} Essaie une autre direction ou adapte la distance.` : check.reason);
