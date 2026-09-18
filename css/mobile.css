@@ -61,3 +61,39 @@
   .tempo-topbar .suite-toggle span { display: none; }
   .tempo-topbar .fab { flex-basis: 35px; width: 35px; height: 35px; }
 }
+
+/* v2.8.6 — mobile topbar closer to RunPlanner */
+@media (max-width: 767px) {
+  :root { --topbar-height: 64px; }
+  .tempo-topbar-inner { gap: 6px; }
+  .tempo-topbar .suite-toggle-brand { padding-left: 2px; }
+  .tempo-topbar .suite-toggle-brand strong { font-size: 17px; }
+  .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span { font-size: 9px; }
+  .theme-chip {
+    min-width: 0;
+    width: auto;
+    padding: 0 10px;
+    height: 36px;
+    font-size: 13px;
+  }
+  .leaflet-top.leaflet-right { top: calc(var(--topbar-height) + 10px); }
+}
+@media (max-width: 460px) {
+  .theme-chip { min-width: 90px; padding: 0 8px; }
+  .tempo-brand-mark { width: 24px; height: 24px; flex-basis: 24px; }
+  .tempo-topbar .fab { flex-basis: 35px; width: 35px; height: 35px; }
+}
+@media (max-width: 390px) {
+  .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span { letter-spacing: .08em; }
+  .theme-chip { min-width: 86px; font-size: 12px; }
+}
+
+@media (max-width: 380px) {
+  .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span { display: block; }
+  .tempo-topbar .suite-toggle-brand .suite-chevron { display: inline-block; }
+}
+
+/* v2.8.7 — retour au bouton thème rond de RoadPlanner */
+@media (max-width: 767px) {
+  .tempo-topbar .fab-theme { flex: 0 0 35px; width: 35px; height: 35px; }
+}

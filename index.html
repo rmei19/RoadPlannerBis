@@ -48,7 +48,14 @@
 <header class="tempo-topbar" aria-label="Barre Tempo Routes">
   <div class="tempo-topbar-inner">
 <div class="suite-switcher" id="suite-switcher">
-  <button id="suite-toggle" type="button" class="suite-toggle" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">◕ <strong>Tempo</strong> <span>Routes · v2.8.5</span> ▾</button>
+  <button id="suite-toggle" type="button" class="suite-toggle suite-toggle-brand" aria-expanded="false" aria-controls="suite-menu" aria-label="Ouvrir la suite Tempo">
+    <span class="tempo-brand-mark" aria-hidden="true"></span>
+    <span class="tempo-brand-copy">
+      <strong>Tempo</strong>
+      <span>COURSE · ROUTES</span>
+    </span>
+    <span class="suite-chevron" aria-hidden="true">▾</span>
+  </button>
   <nav id="suite-menu" class="suite-menu" aria-label="Applications Tempo" hidden>
     <a href="https://octopi.tail2fca2d.ts.net:8443/">Tempo · Agenda</a>
     <a href="https://rmei19.github.io/GPXStravaLike/">Tempo · Traces</a>
@@ -56,14 +63,8 @@
     <a href="./" aria-current="page">Tempo · Routes</a>
   </nav>
 </div>
-<!-- Même jeu de commandes que RunPlanner : réglages, localisation, thème. -->
 <button id="btn-settings" class="fab fab-settings" type="button" title="Réglages du parcours" aria-label="Afficher les réglages">⚙️</button>
 <button id="btn-locate" class="fab fab-locate" type="button" title="Me localiser" aria-label="Me localiser">📍</button>
-
-<!-- Bouton bascule couches (fond de carte) : icône "carte pliée", plus explicite qu'un pictogramme de calques abstrait -->
-<button id="btn-layers" class="fab fab-layers" type="button" title="Changer le fond de carte" aria-label="Changer le fond de carte">🗺️</button>
-
-<!-- Bouton bascule thème clair/sombre -->
 <button id="btn-theme" class="fab fab-theme" type="button" title="Thème système, clair ou sombre" aria-label="Changer de thème">🌓</button>
 
   </div>

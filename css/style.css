@@ -845,3 +845,124 @@ body.has-protocol-warning .fab { margin-top: 44px; }
 
 body.has-protocol-warning .tempo-topbar { top: 44px; }
 body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
+
+/* v2.8.6 — en-tête aligné sur RunPlanner + contrôle de couches sur la carte */
+.tempo-topbar .suite-toggle-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  border: 0;
+  border-radius: 12px;
+  box-shadow: none;
+  padding: 6px 6px;
+  background: transparent;
+  color: var(--color-text);
+  text-align: left;
+}
+.tempo-brand-mark {
+  position: relative;
+  flex: 0 0 28px;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: conic-gradient(from 220deg, #ff8f84 0 55%, #ff645e 55% 100%);
+}
+.tempo-brand-mark::after {
+  content: '';
+  position: absolute;
+  inset: 5px;
+  background: var(--color-surface);
+  border-radius: 50%;
+}
+.tempo-brand-mark::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  transform: translateX(5px);
+  z-index: 1;
+}
+.tempo-brand-copy {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  line-height: 1.05;
+}
+.tempo-topbar .suite-toggle-brand strong {
+  color: #20262c;
+  font: 700 18px var(--font-body);
+}
+:root[data-theme='dark'] .tempo-topbar .suite-toggle-brand strong {
+  color: #f2f5f7;
+}
+.tempo-topbar .suite-toggle-brand .tempo-brand-copy > span {
+  display: block;
+  color: var(--color-text-dim);
+  font-size: 10px;
+  letter-spacing: .12em;
+}
+.suite-chevron,
+.theme-chip-chevron {
+  color: var(--color-text-dim);
+  font-size: 12px;
+}
+.tempo-topbar .suite-switcher {
+  flex: 1 1 auto;
+}
+.tempo-topbar .suite-toggle-brand .suite-chevron {
+  margin-left: auto;
+}
+.theme-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 108px;
+  height: 39px;
+  padding: 0 14px;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  background: transparent;
+  color: var(--color-text);
+  font: 600 14px var(--font-body);
+  cursor: pointer;
+}
+.theme-chip:hover {
+  background: var(--color-surface-alt);
+}
+.tempo-topbar .fab,
+.tempo-topbar .theme-chip {
+  flex-shrink: 0;
+}
+.leaflet-top.leaflet-right {
+  top: calc(var(--topbar-height) + 12px);
+  right: 10px;
+}
+.leaflet-control-layers {
+  border: 1px solid var(--color-border) !important;
+  border-radius: 12px !important;
+  overflow: hidden;
+  box-shadow: 0 8px 26px rgba(0,0,0,.15) !important;
+}
+.leaflet-control-layers-toggle {
+  width: 44px !important;
+  height: 44px !important;
+  background-size: 22px 22px !important;
+}
+.leaflet-touch .leaflet-control-layers,
+.leaflet-touch .leaflet-bar {
+  border-color: var(--color-border) !important;
+}
+.leaflet-control-layers-expanded {
+  padding: 10px 12px !important;
+  background: var(--color-surface) !important;
+  color: var(--color-text) !important;
+}
+.leaflet-control-layers label {
+  font: 500 13px var(--font-body);
+}

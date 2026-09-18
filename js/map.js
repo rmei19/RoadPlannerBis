@@ -9,7 +9,9 @@ const RPMap = (() => {
 
   let map = null;
   let baseLayers = {};
+  let baseLayerLabels = {};
   let currentBaseLayerKey = 'osm';
+  let layersControl = null;
   let markers = { start: null, end: null, waypoints: [] };
   let routeLayers = {}; // { routeId: L.LayerGroup }
   let routeGeometries = {}; // { routeId: { latlngs, color } } — pour détecter les chevauchements entre tracés
@@ -28,24 +30,46 @@ const RPMap = (() => {
       attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
       maxZoom: 19,
     });
+    baseLayerLabels.osm = 'OpenStreetMap';
+
+    baseLayers.carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 20,
+    });
+    baseLayerLabels.carto = 'Clair';
 
     baseLayers.cyclosm = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors, tuiles CyclOSM',
       maxZoom: 20,
     });
+    baseLayerLabels.cyclosm = 'Vélo';
 
     baseLayers.topo = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors, style &copy; <a href="https://opentopomap.org">OpenTopoMap</a> (CC-BY-SA)',
       maxZoom: 17,
     });
+    baseLayerLabels.topo = 'Relief';
 
     baseLayers[currentBaseLayerKey].addTo(map);
+
+    layersControl = L.control.layers({
+      'OpenStreetMap': baseLayers.osm,
+      'Clair': baseLayers.carto,
+      'Vélo': baseLayers.cyclosm,
+      'Relief': baseLayers.topo,
+    }, null, { position: 'topright', collapsed: true }).addTo(map);
+
+    map.on('baselayerchange', (e) => {
+      const nextKey = Object.keys(baseLayers).find((key) => baseLayers[key] === e.layer);
+      if (nextKey) currentBaseLayerKey = nextKey;
+    });
 
     let tileErrorNotified = false;
     map.on('tileerror', () => {
       if (tileErrorNotified) return;
       tileErrorNotified = true;
-      RPUtils.toast('Fond de carte indisponible (serveur de tuiles saturé ou bloqué). Essayez un autre fond via le bouton calques.', { error: true, duration: 5000 });
+      RPUtils.toast('Fond de carte indisponible (serveur de tuiles saturé ou bloqué). Essayez un autre fond via le bouton des couches en haut à droite.', { error: true, duration: 5000 });
     });
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
@@ -145,13 +169,17 @@ const RPMap = (() => {
   }
 
   function cycleBaseLayer() {
-    const order = ['osm', 'cyclosm', 'topo'];
+    const order = ['osm', 'carto', 'cyclosm', 'topo'];
     const currentIndex = order.indexOf(currentBaseLayerKey);
     const next = order[(currentIndex + 1) % order.length];
     map.removeLayer(baseLayers[currentBaseLayerKey]);
     baseLayers[next].addTo(map);
     currentBaseLayerKey = next;
     return next;
+  }
+
+  function getCurrentBaseLayerLabel() {
+    return baseLayerLabels[currentBaseLayerKey] || 'Carte';
   }
 
   function makePinIcon(cssClass) {
@@ -467,6 +495,7 @@ const RPMap = (() => {
     init,
     getMap: () => map,
     cycleBaseLayer,
+    getCurrentBaseLayerLabel,
     setStartMarker,
     setEndMarker,
     addWaypointMarker,

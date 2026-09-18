@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.8.5';
+  const APP_VERSION = '2.8.7';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -487,11 +487,6 @@
       }
     });
 
-    document.getElementById('btn-layers').addEventListener('click', () => {
-      const layer = RPMap.cycleBaseLayer();
-      RPUtils.toast(`Fond de carte : ${layer === 'osm' ? 'OpenStreetMap' : layer === 'cyclosm' ? 'CyclOSM' : 'OpenTopoMap (relief)'}`);
-    });
-
     document.getElementById('btn-theme').addEventListener('click', toggleTheme);
     document.getElementById('btn-settings').addEventListener('click', () => RPUi.switchTab('criteria'));
   }
@@ -520,7 +515,8 @@
     const resolved = preference === 'system' ? (prefersLight ? 'light' : 'dark') : preference;
     document.documentElement.setAttribute('data-theme', resolved);
     const button = document.getElementById('btn-theme');
-    button.title = `Thème : ${preference === 'system' ? 'système' : preference}. Toucher pour changer.`;
+    const preferenceLabel = preference === 'system' ? 'système' : preference === 'light' ? 'clair' : 'sombre';
+    button.title = `Thème : ${preferenceLabel}. Toucher pour changer.`;
     button.setAttribute('aria-label', button.title);
     RPUtils.storage.set('rp_theme', preference);
   }
