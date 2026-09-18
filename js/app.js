@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.8.4';
+  const APP_VERSION = '2.8.5';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -765,7 +765,16 @@
             }
             const candidate = await RPRouting.computeRoute(coordinates, def, options, criteria);
             if (isLoopMode && waypointsLatLng.length && criteria.avoidOverlap) {
-              const spurCheck = RPLoops.validateSpurBudget(candidate.latlngs, criteria.distanceKm);
+              let spurCheck = RPLoops.validateSpurBudget(candidate.latlngs, criteria.distanceKm);
+              if (!spurCheck.ok && coordinates?._rpRelaxedOverlap) {
+                const relaxedCheck = RPLoops.validateSpurBudget(candidate.latlngs, criteria.distanceKm, { relaxed: true });
+                if (relaxedCheck.ok) {
+                  spurCheck = relaxedCheck;
+                  candidate._rpRelaxedOverlap = true;
+                  candidate._rpFallbackOverlapM = relaxedCheck.extraM;
+                  RPUtils.debugLog(`Boucle de secours acceptée : ${(relaxedCheck.extraM / 1000).toFixed(1)} km de chevauchement (aucune boucle plus propre trouvée).`, 'warn');
+                }
+              }
               if (!spurCheck.ok) {
                 RPUtils.debugLog(`Boucle écartée avant découpe : ${spurCheck.reason}`, 'warn');
                 if (attempt === finalAttempts) throw new Error(`${spurCheck.reason} Essaie un autre point ou une autre direction.`);
@@ -782,8 +791,10 @@
             let check = shapeCheck.ok && waypointsLatLng.length
               ? RPLoops.validateUserWaypoints(candidate.latlngs, waypointsLatLng)
               : shapeCheck;
-            if (check.ok && isLoopMode && waypointsLatLng.length && criteria.avoidOverlap)
-              check = RPLoops.validateSpurBudget(candidate.latlngs, criteria.distanceKm);
+            if (check.ok && isLoopMode && waypointsLatLng.length && criteria.avoidOverlap) {
+              check = RPLoops.validateSpurBudget(candidate.latlngs, criteria.distanceKm,
+                { relaxed: Boolean(candidate._rpRelaxedOverlap) });
+            }
             if (check.ok && isLoopMode && waypointsLatLng.length) {
               const actualKm = candidate.distance / 1000;
               const tolerance = Math.max(0.05, criteria.toleranceRatio || 0.1);
@@ -817,6 +828,7 @@
             boundaryPoints: labelBoundaryPoints,
             trimmable: isLoopMode,
             overlapSegments: isLoopMode ? RPOverlaps.findSegments(stats.latlngs) : [],
+            overlapWarningM: stats._rpRelaxedOverlap ? stats._rpFallbackOverlapM : 0,
             criteria,
           });
         } catch (err) {

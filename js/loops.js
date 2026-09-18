@@ -271,13 +271,18 @@ const RPLoops = (() => {
 
   /** Une boucle qui repasse plusieurs kilomètres sur elle-même ne doit pas
    * être acceptée parce que ces portions seraient ensuite découpables. */
-  function validateSpurBudget(latlngs, targetKm) {
+  function validateSpurBudget(latlngs, targetKm, { relaxed = false } = {}) {
     const spurs = RPOverlaps.findSegments(latlngs);
     const extraM = spurs.reduce((total, segment) => total + segment.removedDistanceM, 0);
-    const budgetM = Math.max(1000, targetKm * 35);
+    // Validation normale : environ 3,5 % de la distance demandée, avec un
+    // minimum de 1 km. En secours, on autorise jusqu'à 10 % (plafonné à
+    // 6 km) afin de proposer une boucle imparfaite plutôt que rien du tout.
+    const strictBudgetM = Math.max(1000, targetKm * 35);
+    const relaxedBudgetM = Math.max(3000, Math.min(6000, targetKm * 100));
+    const budgetM = relaxed ? relaxedBudgetM : strictBudgetM;
     return extraM <= budgetM
-      ? { ok: true }
-      : { ok: false, reason: `${(extraM / 1000).toFixed(1)} km d'aller-retour sur la même route.` };
+      ? { ok: true, extraM, budgetM, relaxed }
+      : { ok: false, extraM, budgetM, relaxed, reason: `${(extraM / 1000).toFixed(1)} km d'aller-retour sur la même route.` };
   }
 
   /**
@@ -296,6 +301,7 @@ const RPLoops = (() => {
     let trimmableCoords = null;
     let lastReason = '';
     let scale = 1;
+    let bestFallback = null;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       // Toujours construire d'abord une vraie forme de boucle synthétique.
       // Si des points utilisateur sont imposés, on les insère ensuite dans le
@@ -320,7 +326,8 @@ const RPLoops = (() => {
         const actualKm = preview.distance / 1000;
         if (userWaypoints.length && actualKm > 0) {
           const ratio = distanceKm / actualKm;
-          if (Math.abs(ratio - 1) > Math.max(0.05, toleranceRatio)) {
+          const relativeError = Math.abs(actualKm / distanceKm - 1);
+          if (relativeError > Math.max(0.05, toleranceRatio)) {
             scale = Math.max(0.35, Math.min(3.5, scale * Math.max(0.65, Math.min(1.8, ratio ** 0.8))));
             RPUtils.debugLog(`Aperçu ${actualKm.toFixed(1)} km pour ${distanceKm} km demandés ; correction de la taille de boucle.`, 'info');
             continue;
@@ -334,6 +341,22 @@ const RPLoops = (() => {
           if (attempt > 1) RPUtils.debugLog(`Boucle valide obtenue après ${attempt} tentative(s).`, 'ok');
           return coords;
         }
+        // Si la géométrie, le passage par les points imposés et la distance
+        // sont corrects mais que seul le chevauchement dépasse le budget
+        // strict, mémorise le meilleur candidat de secours. On continue les
+        // tentatives pour essayer de faire mieux, puis on pourra proposer ce
+        // candidat imparfait au lieu d'échouer totalement.
+        if (passage.ok && requireUniqueRoads && userWaypoints.length) {
+          const relaxed = validateSpurBudget(preview.latlngs, distanceKm, { relaxed: true });
+          if (relaxed.ok) {
+            const distanceError = Math.abs(actualKm - distanceKm);
+            const score = relaxed.extraM + distanceError * 250;
+            if (!bestFallback || score < bestFallback.score) {
+              bestFallback = { coords, score, extraM: relaxed.extraM, actualKm };
+              RPUtils.debugLog(`Candidat de secours mémorisé : ${actualKm.toFixed(1)} km, ${(relaxed.extraM / 1000).toFixed(1)} km de chevauchement.`, 'warn');
+            }
+          }
+        }
         if (requireUniqueRoads && validateLoopRoute(preview.latlngs, start, direction, false).ok
             && RPOverlaps.findSegments(preview.latlngs).length) trimmableCoords = coords;
         lastReason = check.reason;
@@ -345,6 +368,12 @@ const RPLoops = (() => {
         // Le tracé final sera contrôlé après routage ORS/BRouter dans app.js.
         return coords;
       }
+    }
+    if (bestFallback) {
+      bestFallback.coords._rpRelaxedOverlap = true;
+      bestFallback.coords._rpFallbackOverlapM = bestFallback.extraM;
+      RPUtils.debugLog(`Aucune boucle parfaite trouvée : meilleur candidat conservé (${bestFallback.actualKm.toFixed(1)} km, ${(bestFallback.extraM / 1000).toFixed(1)} km de chevauchement).`, 'warn');
+      return bestFallback.coords;
     }
     if (trimmableCoords && !userWaypoints.length) return trimmableCoords;
     if (userWaypoints.length || requireUniqueRoads || direction !== 'random' && direction !== 'centered')

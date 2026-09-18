@@ -121,7 +121,7 @@ La tolérance et le type de relief ne sont plus demandés dans l'interface : les
 Le curseur de D+ souhaité a été retiré : il ne modifiait pas le tracé. Le D+ mesuré reste affiché après génération et ne change plus la note de qualité. Les champs « maximum de grandes routes » (simple effet sur la note) et « maximum de feux » (aucun effet) ainsi que les préférences Petites routes, Panoramiques, Villages, Vallées, Cols et Bords de rivière ne sont plus proposés. Les poids de routage restent ceux des trois profils d'itinéraire quand aucune préférence n'était cochée. Course/Gravel/VTT reste disponible et continue de modifier les profils ORS/BRouter. La barre haute utilise les mêmes pictogrammes réglages, localisation et thème que RunPlanner ; l'icône de carte garde l'accès aux fonds de carte. Le bouton réglages ouvre directement la section avancée.
 
 
-## Version 2.8.4 — Boucles avec points imposés
+## Version 2.8.5 — Boucles avec points imposés
 
 - Correction de la construction des boucles avec un ou plusieurs points de passage : les points utilisateur sont maintenant insérés dans l'anneau synthétique au segment qui minimise le détour, au lieu d'être placés avant une pointe éloignée qui provoquait souvent un long aller-retour.
 - Le redimensionnement après aperçu BRouter agit sur l'anneau synthétique tout en conservant les points utilisateur fixes.
