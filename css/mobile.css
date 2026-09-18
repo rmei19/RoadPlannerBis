@@ -59,16 +59,16 @@
 }
 @media (max-width: 380px) {
   .tempo-topbar .suite-toggle span { display: none; }
-  .tempo-topbar .fab { flex-basis: 35px; width: 35px; height: 35px; }
+  .tempo-topbar .fab { flex-basis: 34px; width: 34px; height: 34px; }
 }
 
 /* v2.8.6 — mobile topbar closer to RunPlanner */
 @media (max-width: 767px) {
-  :root { --topbar-height: 64px; }
+  :root { --topbar-height: 56px; }
   .tempo-topbar-inner { gap: 6px; }
   .tempo-topbar .suite-toggle-brand { padding-left: 2px; }
-  .tempo-topbar .suite-toggle-brand strong { font-size: 17px; }
-  .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span { font-size: 9px; }
+  .tempo-topbar .suite-toggle-brand strong { font-size: 16px; }
+  .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span { font-size: 8px; }
   .theme-chip {
     min-width: 0;
     width: auto;
@@ -76,16 +76,17 @@
     height: 36px;
     font-size: 13px;
   }
-  .leaflet-top.leaflet-right { top: calc(var(--topbar-height) + 10px); }
+  .leaflet-top.leaflet-right { top: calc(var(--topbar-height) + 4px); }
 }
 @media (max-width: 460px) {
   .theme-chip { min-width: 90px; padding: 0 8px; }
-  .tempo-brand-mark { width: 24px; height: 24px; flex-basis: 24px; }
-  .tempo-topbar .fab { flex-basis: 35px; width: 35px; height: 35px; }
+  .tempo-brand-mark { width: 23px; height: 23px; flex-basis: 23px; border-width: 5px; }
+  .tempo-topbar .fab { flex-basis: 34px; width: 34px; height: 34px; }
 }
 @media (max-width: 390px) {
   .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span { letter-spacing: .08em; }
   .theme-chip { min-width: 86px; font-size: 12px; }
+  .tempo-topbar-inner { gap: 5px; }
 }
 
 @media (max-width: 380px) {

@@ -804,14 +804,14 @@ body.has-protocol-warning .fab { margin-top: 44px; }
 .route-trim-map-btn { display: block; padding: 11px; border: 0; border-radius: 8px; background: #8736bd; color: #fff; font: 600 14px var(--font-body); cursor: pointer; min-height: 44px; }
 
 /* v2.5 — en-tête commun à la suite et panneau continu façon RunPlanner. */
-:root { --topbar-height: 58px; }
+:root { --topbar-height: 56px; }
 #map { top: var(--topbar-height); }
 .tempo-topbar {
   position: fixed; z-index: 1200; top: 0; left: 0; right: 0;
   height: var(--topbar-height); padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
   background: var(--color-surface); border-bottom: 1px solid var(--color-border);
 }
-.tempo-topbar-inner { display: flex; align-items: center; gap: 7px; width: 100%; height: 100%; }
+.tempo-topbar-inner { display: flex; align-items: center; gap: 6px; width: 100%; height: 100%; }
 .tempo-topbar .suite-switcher { position: relative; z-index: 2; top: auto; left: auto; right: auto; flex: 1; min-width: 0; }
 .tempo-topbar .suite-toggle {
   width: 100%; border: 0; border-radius: 9px; box-shadow: none;
@@ -822,7 +822,7 @@ body.has-protocol-warning .fab { margin-top: 44px; }
 .tempo-topbar .suite-toggle:hover, .tempo-topbar .fab:hover { background: var(--color-surface-alt); }
 .tempo-topbar .suite-menu { position: absolute; top: 100%; left: 0; max-width: calc(100vw - 24px); }
 .tempo-topbar .fab {
-  position: static; z-index: auto; flex: 0 0 37px; width: 37px; height: 37px;
+  position: static; z-index: auto; flex: 0 0 35px; width: 35px; height: 35px;
   border-radius: 999px; box-shadow: none; background: transparent;
   font-size: 18px; line-height: 1;
 }
@@ -850,52 +850,40 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
 .tempo-topbar .suite-toggle-brand {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   width: 100%;
   border: 0;
-  border-radius: 12px;
+  border-radius: 10px;
   box-shadow: none;
-  padding: 6px 6px;
+  padding: 4px 4px;
   background: transparent;
   color: var(--color-text);
   text-align: left;
 }
 .tempo-brand-mark {
   position: relative;
-  flex: 0 0 28px;
-  width: 28px;
-  height: 28px;
+  flex: 0 0 23px;
+  width: 23px;
+  height: 23px;
+  border: 5px solid #ef8f88;
+  border-right-color: transparent;
   border-radius: 50%;
-  background: conic-gradient(from 220deg, #ff8f84 0 55%, #ff645e 55% 100%);
+  transform: rotate(-34deg);
+  box-sizing: border-box;
 }
-.tempo-brand-mark::after {
-  content: '';
-  position: absolute;
-  inset: 5px;
-  background: var(--color-surface);
-  border-radius: 50%;
-}
+.tempo-brand-mark::after,
 .tempo-brand-mark::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  margin: auto;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  background: var(--color-surface);
-  transform: translateX(5px);
-  z-index: 1;
+  content: none;
 }
 .tempo-brand-copy {
   display: flex;
   flex-direction: column;
   min-width: 0;
-  line-height: 1.05;
+  line-height: 1.02;
 }
 .tempo-topbar .suite-toggle-brand strong {
   color: #20262c;
-  font: 700 18px var(--font-body);
+  font: 700 17px var(--font-body);
 }
 :root[data-theme='dark'] .tempo-topbar .suite-toggle-brand strong {
   color: #f2f5f7;
@@ -903,9 +891,10 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
 .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span {
   display: block;
   color: var(--color-text-dim);
-  font-size: 10px;
+  font-size: 9px;
   letter-spacing: .12em;
 }
+.tempo-sport-emoji { font-size: 13px; vertical-align: baseline; margin-left: 2px; }
 .suite-chevron,
 .theme-chip-chevron {
   color: var(--color-text-dim);
@@ -940,7 +929,7 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
   flex-shrink: 0;
 }
 .leaflet-top.leaflet-right {
-  top: calc(var(--topbar-height) + 12px);
+  top: calc(var(--topbar-height) + 6px);
   right: 10px;
 }
 .leaflet-control-layers {
@@ -950,9 +939,9 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
   box-shadow: 0 8px 26px rgba(0,0,0,.15) !important;
 }
 .leaflet-control-layers-toggle {
-  width: 44px !important;
-  height: 44px !important;
-  background-size: 22px 22px !important;
+  width: 40px !important;
+  height: 40px !important;
+  background-size: 20px 20px !important;
 }
 .leaflet-touch .leaflet-control-layers,
 .leaflet-touch .leaflet-bar {
