@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.8.3';
+  const APP_VERSION = '2.8.4';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -736,11 +736,20 @@
     try {
       for (const [routeIndex, def] of routeDefs.entries()) {
         if (generationCancelled) { RPUtils.debugLog('Génération annulée par l\'utilisateur.', 'warn'); break; }
-        RPUtils.debugLog(`Profil "${def.name}" : appel OpenRouteService en cours…`, 'info');
         const t0 = performance.now();
         try {
           const baseOptions = def.buildOptions(criteria);
           const options = RPProfiles.applyUserPreferences(baseOptions, criteria);
+          const directBRouter = criteria.routingEngine === 'brouter'
+            || (criteria.routingEngine === 'auto'
+              && options.profile === 'cycling-road'
+              && options.avoid_features?.includes('highways'));
+          const engineLabel = criteria.routingEngine === 'ors'
+            ? 'OpenRouteService'
+            : directBRouter
+              ? 'BRouter'
+              : 'OpenRouteService (repli BRouter si nécessaire)';
+          RPUtils.debugLog(`Profil "${def.name}" : appel ${engineLabel} en cours…`, 'info');
 
           let stats = null;
           const finalAttempts = isLoopMode && waypointsLatLng.length ? 3 : isLoopMode ? 2 : 1;

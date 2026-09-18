@@ -297,10 +297,20 @@ const RPLoops = (() => {
     let lastReason = '';
     let scale = 1;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+      // Toujours construire d'abord une vraie forme de boucle synthétique.
+      // Si des points utilisateur sont imposés, on les insère ensuite dans le
+      // segment de l'anneau qui minimise le détour. L'ancienne stratégie
+      // [départ -> waypoint -> pointe -> flanc -> départ] créait presque
+      // systématiquement une antenne quand le waypoint se trouvait dans la
+      // direction générale de la boucle (ex. ouest de Poisy).
+      const syntheticPoints = generatorFn(scale, attempt);
       const coords = userWaypoints.length
-        ? buildUserGuidedLoop(start, userWaypoints, distanceKm, attempt, direction, scale)
-        : [start, ...generatorFn(), start];
+        ? insertUserWaypoints(start, syntheticPoints, userWaypoints)
+        : [start, ...syntheticPoints, start];
       lastCoords = coords;
+      if (userWaypoints.length) {
+        RPUtils.debugLog(`Tentative ${attempt}/${maxAttempts} : ${userWaypoints.length} point(s) imposé(s) inséré(s) dans un anneau de ${syntheticPoints.length} sommet(s) (échelle ${scale.toFixed(2)}).`, 'info');
+      }
       try {
         // BRouter (GET, gratuit, rapide) sert uniquement de test de forme,
         // avec le MÊME profil que celui réellement utilisé pour cet
@@ -352,13 +362,19 @@ const RPLoops = (() => {
     if (mode === 'random-loop') {
       return buildValidatedLoopCoordinates(
         start, criteria.distanceKm, criteria.relief,
-        () => generateRandomLoopWaypoints(start, criteria.distanceKm, criteria.relief, criteria.loopDirection),
+        (scale = 1) => generateRandomLoopWaypoints(start, criteria.distanceKm * scale, criteria.relief, criteria.loopDirection),
         brouterProfile, userWaypoints.length ? 7 : 5, criteria.avoidOverlap, criteria.loopDirection, userWaypoints, criteria.toleranceRatio
       );
     }
     return buildValidatedLoopCoordinates(
       start, criteria.distanceKm, criteria.relief,
-      () => generateLoopWaypoints(start, criteria.distanceKm, { relief: criteria.relief, direction: criteria.loopDirection }),
+      (scale = 1, attempt = 1) => generateLoopWaypoints(start, criteria.distanceKm * scale, {
+        relief: criteria.relief,
+        direction: criteria.loopDirection,
+        // Une graine différente par essai garantit qu'un refus pour
+        // chevauchement produit réellement une autre géométrie.
+        seed: Math.floor((Date.now() % 1000000) + attempt * 104729),
+      }),
       brouterProfile, userWaypoints.length ? 7 : 5, criteria.avoidOverlap, criteria.loopDirection, userWaypoints, criteria.toleranceRatio
     );
   }
