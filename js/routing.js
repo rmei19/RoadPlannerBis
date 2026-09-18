@@ -99,6 +99,13 @@ const RPRouting = (() => {
       return computeRouteBRouter(latlngPoints, orsOptions.brouterProfile);
     }
 
+    // ORS refuse systématiquement cette combinaison (visible dans ses réponses
+    // 400). En mode auto, passer directement au moteur qui gère déjà ce profil.
+    if (orsOptions.profile === 'cycling-road' && orsOptions.avoid_features?.includes('highways')) {
+      RPUtils.debugLog(`Profil "${def.name}" : BRouter choisi directement (éviter highways est incompatible avec cycling-road sur ORS).`, 'info');
+      return computeRouteBRouter(latlngPoints, orsOptions.brouterProfile);
+    }
+
     // Mode automatique : ORS d'abord, repli sur BRouter si ça échoue.
     try {
       return await computeRouteORS(latlngPoints, orsOptions);

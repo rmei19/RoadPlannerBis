@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.8.2';
+  const APP_VERSION = '2.8.3';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -755,6 +755,14 @@
               RPUi.setLoading(true, `Calcul de ${routeDefs.length} parcours en cours…`, handleCancelGenerate);
             }
             const candidate = await RPRouting.computeRoute(coordinates, def, options, criteria);
+            if (isLoopMode && waypointsLatLng.length && criteria.avoidOverlap) {
+              const spurCheck = RPLoops.validateSpurBudget(candidate.latlngs, criteria.distanceKm);
+              if (!spurCheck.ok) {
+                RPUtils.debugLog(`Boucle écartée avant découpe : ${spurCheck.reason}`, 'warn');
+                if (attempt === finalAttempts) throw new Error(`${spurCheck.reason} Essaie un autre point ou une autre direction.`);
+                continue;
+              }
+            }
             if (isLoopMode) {
               const cleaned = RPOverlaps.trimShortSpurs(candidate, { protectedPoints: waypointsLatLng });
               if (cleaned.cuts) RPUtils.debugLog(`${cleaned.cuts} petite(s) antenne(s) coupée(s) automatiquement (${Math.round(cleaned.removedM)} m).`, 'info');
@@ -765,6 +773,8 @@
             let check = shapeCheck.ok && waypointsLatLng.length
               ? RPLoops.validateUserWaypoints(candidate.latlngs, waypointsLatLng)
               : shapeCheck;
+            if (check.ok && isLoopMode && waypointsLatLng.length && criteria.avoidOverlap)
+              check = RPLoops.validateSpurBudget(candidate.latlngs, criteria.distanceKm);
             if (check.ok && isLoopMode && waypointsLatLng.length) {
               const actualKm = candidate.distance / 1000;
               const tolerance = Math.max(0.05, criteria.toleranceRatio || 0.1);

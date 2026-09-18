@@ -120,6 +120,11 @@ La tolérance et le type de relief ne sont plus demandés dans l'interface : les
 
 Le curseur de D+ souhaité a été retiré : il ne modifiait pas le tracé. Le D+ mesuré reste affiché après génération et ne change plus la note de qualité. Les champs « maximum de grandes routes » (simple effet sur la note) et « maximum de feux » (aucun effet) ainsi que les préférences Petites routes, Panoramiques, Villages, Vallées, Cols et Bords de rivière ne sont plus proposés. Les poids de routage restent ceux des trois profils d'itinéraire quand aucune préférence n'était cochée. Course/Gravel/VTT reste disponible et continue de modifier les profils ORS/BRouter. La barre haute utilise les mêmes pictogrammes réglages, localisation et thème que RunPlanner ; l'icône de carte garde l'accès aux fonds de carte. Le bouton réglages ouvre directement la section avancée.
 
+## Version 2.8.3 — Limitation des antennes
+
+- Quand « éviter les allers-retours » est activé avec des points imposés, un parcours avec trop de chaussées parcourues deux fois est écarté dans l'aperçu et après le routage final, avant toute coupe automatique. Si aucune boucle correcte n'est trouvée, le motif est indiqué au lieu d'afficher un tracé encombré.
+- Le profil « routes secondaires » sur vélo de route utilise directement BRouter en mode automatique : ORS refusait la combinaison `cycling-road` + `avoid_features: highways` à chaque calcul.
+
 ## Version 2.8.2 — Respect de la distance avec points de passage
 
 - Une boucle avec points de passage est étendue selon la distance demandée et son aperçu BRouter ajuste progressivement sa taille. La distance du résultat définitif est vérifiée après routage et après suppression des petites antennes.

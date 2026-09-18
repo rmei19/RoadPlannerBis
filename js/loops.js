@@ -243,7 +243,8 @@ const RPLoops = (() => {
     const reach = Math.max(distanceKm * 300 * scale, furthest + distanceKm * 80 * scale);
     const tip = RPUtils.destinationPoint(start, reach, heading);
     const side = attempt > 3 ? -1 : 1;
-    const returnMidpoint = RPUtils.destinationPoint(start, reach * 0.55, heading);
+    const returnFraction = [0.55, 0.72, 0.38][(attempt - 1) % 3];
+    const returnMidpoint = RPUtils.destinationPoint(start, reach * returnFraction, heading);
     const flank = RPUtils.destinationPoint(returnMidpoint, distanceKm * 140 * scale, heading + side * 90);
     const last = waypoints.at(-1);
     // Évite deux points quasi superposés qui provoqueraient une antenne.
@@ -268,6 +269,17 @@ const RPLoops = (() => {
     return { ok: true };
   }
 
+  /** Une boucle qui repasse plusieurs kilomètres sur elle-même ne doit pas
+   * être acceptée parce que ces portions seraient ensuite découpables. */
+  function validateSpurBudget(latlngs, targetKm) {
+    const spurs = RPOverlaps.findSegments(latlngs);
+    const extraM = spurs.reduce((total, segment) => total + segment.removedDistanceM, 0);
+    const budgetM = Math.max(1000, targetKm * 35);
+    return extraM <= budgetM
+      ? { ok: true }
+      : { ok: false, reason: `${(extraM / 1000).toFixed(1)} km d'aller-retour sur la même route.` };
+  }
+
   /**
    * Génère des points de boucle, valide leur forme réelle via un calcul
    * BRouter rapide AVEC LE PROFIL PROPRE À CET ITINÉRAIRE (pas un profil
@@ -282,6 +294,7 @@ const RPLoops = (() => {
   async function buildValidatedLoopCoordinates(start, distanceKm, relief, generatorFn, brouterProfile = 'trekking', maxAttempts = 5, requireUniqueRoads = false, direction = 'random', userWaypoints = [], toleranceRatio = 0.1) {
     let lastCoords = null;
     let trimmableCoords = null;
+    let lastReason = '';
     let scale = 1;
     for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
       const coords = userWaypoints.length
@@ -304,13 +317,16 @@ const RPLoops = (() => {
           }
         }
         const shape = validateLoopRoute(preview.latlngs, start, direction, requireUniqueRoads);
-        const check = shape.ok ? validateUserWaypoints(preview.latlngs, userWaypoints) : shape;
+        const passage = shape.ok ? validateUserWaypoints(preview.latlngs, userWaypoints) : shape;
+        const check = passage.ok && requireUniqueRoads && userWaypoints.length
+          ? validateSpurBudget(preview.latlngs, distanceKm) : passage;
         if (check.ok) {
           if (attempt > 1) RPUtils.debugLog(`Boucle valide obtenue après ${attempt} tentative(s).`, 'ok');
           return coords;
         }
         if (requireUniqueRoads && validateLoopRoute(preview.latlngs, start, direction, false).ok
             && RPOverlaps.findSegments(preview.latlngs).length) trimmableCoords = coords;
+        lastReason = check.reason;
         RPUtils.debugLog(`Tentative ${attempt}/${maxAttempts} : ${check.reason} Nouvel essai…`, 'warn');
       } catch (err) {
         // Si même l'aperçu échoue (réseau, etc.), on ne bloque pas la
@@ -320,8 +336,9 @@ const RPLoops = (() => {
         return coords;
       }
     }
-    if (trimmableCoords) return trimmableCoords;
-    if (userWaypoints.length || requireUniqueRoads || direction !== 'random' && direction !== 'centered') throw new Error('Aucune boucle valide ne passe par tous les points choisis. Modifie les points, la distance ou la direction.');
+    if (trimmableCoords && !userWaypoints.length) return trimmableCoords;
+    if (userWaypoints.length || requireUniqueRoads || direction !== 'random' && direction !== 'centered')
+      throw new Error(`Aucune boucle valide ne passe par tous les points choisis. ${lastReason} Modifie les points, la distance ou la direction.`);
     RPUtils.debugLog(`Aucune boucle sans aller-retour trouvée après ${maxAttempts} tentatives, utilisation de la dernière forme générée.`, 'warn');
     return lastCoords;
   }
@@ -426,5 +443,5 @@ const RPLoops = (() => {
     }
   }
 
-  return { generateLoopWaypoints, generateRandomLoopWaypoints, generateDetourWaypoints, buildCoordinatesForMode, buildLoopCoordinatesForRoute, validateLoopRoute, validateUserWaypoints, insertUserWaypoints, buildUserGuidedLoop };
+  return { generateLoopWaypoints, generateRandomLoopWaypoints, generateDetourWaypoints, buildCoordinatesForMode, buildLoopCoordinatesForRoute, validateLoopRoute, validateUserWaypoints, validateSpurBudget, insertUserWaypoints, buildUserGuidedLoop };
 })();
