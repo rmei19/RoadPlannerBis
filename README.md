@@ -146,3 +146,14 @@ Le curseur de D+ souhaité a été retiré : il ne modifiait pas le tracé. Le D
 ## Version 2.8.0 — Points de passage dans les boucles
 
 Les modes Boucle et Boucle aléatoire affichent les points de passage. Ceux-ci sont insérés dans le trajet généré dans l'ordre choisi. Le tracé réellement calculé est vérifié avant d'être affiché : si un point ne peut pas être atteint, la génération le signale au lieu de présenter une boucle qui l'ignore. Les petites antennes coupées automatiquement ne peuvent plus supprimer un point demandé.
+
+## Version 2.8.8 — fiabilité boucle et lecture carte
+
+- Correction amortie de la distance des boucles guidées pour éviter les oscillations.
+- Conservation du meilleur tracé déjà routé si le moteur échoue lors d’un essai suivant.
+- Secours anti-chevauchement légèrement plus permissif avec waypoint.
+- Retour des bornes tous les 10 km sur la carte.
+- Profil altimétrique interactif : toucher/glisser affiche le point correspondant sur la carte.
+- Cartes de résultat remontées sur mobile et navigation interne du panneau corrigée.
+- Ajout des fonds OSM France et Satellite.
+- Petit vélo dans l’en-tête Tempo Routes.

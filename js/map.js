@@ -17,6 +17,7 @@ const RPMap = (() => {
   let routeGeometries = {}; // { routeId: { latlngs, color } } — pour détecter les chevauchements entre tracés
   let pickMode = null; // 'start' | 'end' | 'waypoint' | null
   let onPickCallback = null;
+  let profilePositionMarker = null;
 
   function init() {
     map = L.map('map', {
@@ -39,6 +40,18 @@ const RPMap = (() => {
     });
     baseLayerLabels.carto = 'Clair';
 
+    baseLayers.osmfr = L.tileLayer('https://{s}.tile.openstreetmap.fr/osmfr/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors, rendu OSM France',
+      maxZoom: 20,
+    });
+    baseLayerLabels.osmfr = 'OSM France';
+
+    baseLayers.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+      attribution: 'Tiles &copy; Esri',
+      maxZoom: 19,
+    });
+    baseLayerLabels.satellite = 'Satellite';
+
     baseLayers.cyclosm = L.tileLayer('https://{s}.tile-cyclosm.openstreetmap.fr/cyclosm/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors, tuiles CyclOSM',
       maxZoom: 20,
@@ -55,9 +68,11 @@ const RPMap = (() => {
 
     layersControl = L.control.layers({
       'OpenStreetMap': baseLayers.osm,
+      'OSM France': baseLayers.osmfr,
       'Clair': baseLayers.carto,
       'Vélo': baseLayers.cyclosm,
       'Relief': baseLayers.topo,
+      'Satellite': baseLayers.satellite,
     }, null, { position: 'topright', collapsed: true }).addTo(map);
 
     map.on('baselayerchange', (e) => {
@@ -169,7 +184,7 @@ const RPMap = (() => {
   }
 
   function cycleBaseLayer() {
-    const order = ['osm', 'carto', 'cyclosm', 'topo'];
+    const order = ['osm', 'osmfr', 'carto', 'cyclosm', 'topo', 'satellite'];
     const currentIndex = order.indexOf(currentBaseLayerKey);
     const next = order[(currentIndex + 1) % order.length];
     map.removeLayer(baseLayers[currentBaseLayerKey]);
@@ -294,19 +309,48 @@ const RPMap = (() => {
 
     const total = cumDist[n - 1];
     if (total < 200) return [];
+    const result = [];
+
+    // Etiquette principale distance + temps au centre géographique.
     let minLat = Infinity, maxLat = -Infinity, minLng = Infinity, maxLng = -Infinity;
     for (const [lat, lng] of latlngs) {
       minLat = Math.min(minLat, lat); maxLat = Math.max(maxLat, lat);
       minLng = Math.min(minLng, lng); maxLng = Math.max(maxLng, lng);
     }
-    const point = [(minLat + maxLat) / 2, (minLng + maxLng) / 2];
+    const center = [(minLat + maxLat) / 2, (minLng + maxLng) / 2];
     const text = `${(total / 1000).toFixed(1)} km · ${RPUtils.formatDuration(total / 1000 / avgSpeedKmh * 3600)}`;
-    const icon = L.divIcon({
+    const mainIcon = L.divIcon({
       className: '',
       html: `<div class="rp-route-label" style="--label-color:${color}; --label-offset:${routeIndex * 34}px">${text}</div>`,
       iconSize: null, iconAnchor: [0, 0],
     });
-    return [L.marker(point, { icon, interactive: false, keyboard: false })];
+    result.push(L.marker(center, { icon: mainIcon, interactive: false, keyboard: false }));
+
+    // Bornes tous les 10 km. Elles avaient disparu lors du passage à une
+    // étiquette unique ; on les restaure ici en interpolant le point exact
+    // le long de la géométrie routée.
+    const pointAtDistance = (targetM) => {
+      let i = 1;
+      while (i < cumDist.length && cumDist[i] < targetM) i += 1;
+      if (i >= cumDist.length) return latlngs[n - 1];
+      const before = cumDist[i - 1];
+      const seg = Math.max(1, cumDist[i] - before);
+      const t = Math.max(0, Math.min(1, (targetM - before) / seg));
+      return [
+        latlngs[i - 1][0] + (latlngs[i][0] - latlngs[i - 1][0]) * t,
+        latlngs[i - 1][1] + (latlngs[i][1] - latlngs[i - 1][1]) * t,
+      ];
+    };
+    for (let km = 10; km * 1000 < total - 250; km += 10) {
+      const point = pointAtDistance(km * 1000);
+      const kmIcon = L.divIcon({
+        className: '',
+        html: `<div class="rp-km-marker" style="--km-color:${color}">${km}</div>`,
+        iconSize: [28, 28], iconAnchor: [14, 14],
+      });
+      result.push(L.marker(point, { icon: kmIcon, interactive: false, keyboard: false }));
+    }
+    return result;
   }
 
   /**
@@ -423,6 +467,7 @@ const RPMap = (() => {
   }
 
   function clearRoutes() {
+    hideProfilePosition();
     Object.values(routeLayers).forEach((layer) => map.removeLayer(layer));
     routeLayers = {};
     routeGeometries = {};
@@ -473,6 +518,33 @@ const RPMap = (() => {
     map.fitBounds(L.latLngBounds(pts), getOcclusionAwarePadding());
   }
 
+  function showProfilePosition(latlng, label = '') {
+    if (!map || !latlng) return;
+    if (!profilePositionMarker) {
+      profilePositionMarker = L.circleMarker(latlng, {
+        radius: 8,
+        color: '#111',
+        weight: 3,
+        fillColor: '#ffffff',
+        fillOpacity: 1,
+        interactive: false,
+        pane: 'markerPane',
+      }).addTo(map);
+    } else {
+      profilePositionMarker.setLatLng(latlng);
+      if (!map.hasLayer(profilePositionMarker)) profilePositionMarker.addTo(map);
+    }
+    if (label) {
+      profilePositionMarker.unbindTooltip();
+      profilePositionMarker.bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -8], className: 'rp-profile-tooltip' }).openTooltip();
+    }
+    map.panInside(latlng, { padding: [55, 90], animate: false });
+  }
+
+  function hideProfilePosition() {
+    if (profilePositionMarker && map?.hasLayer(profilePositionMarker)) map.removeLayer(profilePositionMarker);
+  }
+
   function locateUser() {
     return new Promise((resolve, reject) => {
       if (!navigator.geolocation) {
@@ -514,6 +586,8 @@ const RPMap = (() => {
     clearRoutes,
     fitToRoutes,
     fitToMarkers,
+    showProfilePosition,
+    hideProfilePosition,
     locateUser,
   };
 })();

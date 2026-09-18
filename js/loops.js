@@ -275,10 +275,12 @@ const RPLoops = (() => {
     const spurs = RPOverlaps.findSegments(latlngs);
     const extraM = spurs.reduce((total, segment) => total + segment.removedDistanceM, 0);
     // Validation normale : environ 3,5 % de la distance demandée, avec un
-    // minimum de 1 km. En secours, on autorise jusqu'à 10 % (plafonné à
-    // 6 km) afin de proposer une boucle imparfaite plutôt que rien du tout.
+    // minimum de 1 km. En secours, on tolère davantage sur une boucle guidée
+    // par waypoint : jusqu'à ~16 % (plafonné à 7,5 km). L'objectif est de
+    // garder un parcours praticable plutôt que de renvoyer systématiquement
+    // zéro résultat quand le réseau routier impose un court tronc commun.
     const strictBudgetM = Math.max(1000, targetKm * 35);
-    const relaxedBudgetM = Math.max(3000, Math.min(6000, targetKm * 100));
+    const relaxedBudgetM = Math.max(3200, Math.min(7500, targetKm * 160));
     const budgetM = relaxed ? relaxedBudgetM : strictBudgetM;
     return extraM <= budgetM
       ? { ok: true, extraM, budgetM, relaxed }

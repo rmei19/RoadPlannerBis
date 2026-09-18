@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.8.7';
+  const APP_VERSION = '2.8.8';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -748,7 +748,8 @@
           RPUtils.debugLog(`Profil "${def.name}" : appel ${engineLabel} en cours…`, 'info');
 
           let stats = null;
-          const finalAttempts = isLoopMode && waypointsLatLng.length ? 3 : isLoopMode ? 2 : 1;
+          let bestRoutedFallback = null;
+          const finalAttempts = isLoopMode && waypointsLatLng.length ? 4 : isLoopMode ? 2 : 1;
           let correctedDistanceKm = criteria.distanceKm;
           for (let attempt = 1; attempt <= finalAttempts; attempt += 1) {
             let coordinates = sharedCoordinates;
@@ -759,7 +760,17 @@
               if (generationCancelled) break;
               RPUi.setLoading(true, `Calcul de ${routeDefs.length} parcours en cours…`, handleCancelGenerate);
             }
-            const candidate = await RPRouting.computeRoute(coordinates, def, options, criteria);
+            let candidate;
+            try {
+              candidate = await RPRouting.computeRoute(coordinates, def, options, criteria);
+            } catch (routeErr) {
+              if (bestRoutedFallback) {
+                stats = bestRoutedFallback.candidate;
+                RPUtils.debugLog(`Moteur indisponible à l'essai ${attempt}/${finalAttempts} (${routeErr.message}) : meilleur tracé déjà calculé conservé (${(stats.distance / 1000).toFixed(1)} km).`, 'warn');
+                break;
+              }
+              throw routeErr;
+            }
             if (isLoopMode && waypointsLatLng.length && criteria.avoidOverlap) {
               let spurCheck = RPLoops.validateSpurBudget(candidate.latlngs, criteria.distanceKm);
               if (!spurCheck.ok && coordinates?._rpRelaxedOverlap) {
@@ -794,15 +805,34 @@
             if (check.ok && isLoopMode && waypointsLatLng.length) {
               const actualKm = candidate.distance / 1000;
               const tolerance = Math.max(0.05, criteria.toleranceRatio || 0.1);
-              if (Math.abs(actualKm / criteria.distanceKm - 1) > tolerance) {
+              const relativeError = Math.abs(actualKm / criteria.distanceKm - 1);
+              if (relativeError > tolerance) {
+                // Conserve un résultat raisonnablement proche : si un appel
+                // suivant tombe en erreur, on ne perd pas ce tracé déjà obtenu.
+                if (relativeError <= 0.20 && (!bestRoutedFallback || relativeError < bestRoutedFallback.relativeError)) {
+                  bestRoutedFallback = { candidate, relativeError };
+                  RPUtils.debugLog(`Candidat routé de secours mémorisé : ${actualKm.toFixed(1)} km (${Math.round(relativeError * 100)} % d'écart).`, 'warn');
+                }
                 check = { ok: false, reason: `Boucle de ${actualKm.toFixed(1)} km pour ${criteria.distanceKm} km demandés.` };
-                correctedDistanceKm = Math.max(criteria.distanceKm * 0.65,
-                  Math.min(criteria.distanceKm * 1.7, correctedDistanceKm * criteria.distanceKm / actualKm));
+                // Correction volontairement amortie. L'ancienne formule
+                // corrigeait 37,4 km vers une cible interne de 54,1 km pour
+                // une demande de 45 km, ce qui provoquait une oscillation.
+                const factor = (criteria.distanceKm / Math.max(1, actualKm)) ** 0.55;
+                correctedDistanceKm = Math.max(criteria.distanceKm * 0.78,
+                  Math.min(criteria.distanceKm * 1.30, correctedDistanceKm * factor));
+                RPUtils.debugLog(`Nouvelle cible interne amortie : ${correctedDistanceKm.toFixed(1)} km.`, 'info');
               }
             }
             if (check.ok) { stats = candidate; break; }
             RPUtils.debugLog(`Résultat routé refusé (essai ${attempt}/${finalAttempts}) : ${check.reason}`, 'warn');
-            if (attempt === finalAttempts) throw new Error(isLoopMode ? `${check.reason} Essaie une autre direction ou adapte la distance.` : check.reason);
+            if (attempt === finalAttempts) {
+              if (bestRoutedFallback) {
+                stats = bestRoutedFallback.candidate;
+                RPUtils.debugLog(`Aucun résultat dans la tolérance stricte : meilleur tracé routé conservé (${(stats.distance / 1000).toFixed(1)} km).`, 'warn');
+                break;
+              }
+              throw new Error(isLoopMode ? `${check.reason} Essaie une autre direction ou adapte la distance.` : check.reason);
+            }
           }
           if (generationCancelled || !stats) break;
           const ms = Math.round(performance.now() - t0);

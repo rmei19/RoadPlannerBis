@@ -97,3 +97,9 @@
 @media (max-width: 767px) {
   .tempo-topbar .fab-theme { flex: 0 0 35px; width: 35px; height: 35px; }
 }
+
+/* v2.8.8 — les résultats remontent davantage à l'écran sur téléphone. */
+@media (max-width: 767px) {
+  .panel[data-state="half"] { top: 46%; }
+  .panel-handle { min-height: 56px; padding: 7px 0; }
+}

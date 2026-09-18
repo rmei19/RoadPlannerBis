@@ -33,7 +33,7 @@ const RPUi = (() => {
     const stateTop = (state) => {
       const map = {
         collapsed: vh() - 68,
-        half: vh() * 0.52,
+        half: vh() * 0.46,
         full: Math.max(64, safeTopPx() + 64),
       };
       return map[state];
@@ -110,7 +110,14 @@ const RPUi = (() => {
     if (!target) return;
     if (tabId === 'criteria') document.getElementById('criteria-details').open = true;
     if (currentState === 'collapsed') setPanelState('half');
-    requestAnimationFrame(() => target.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    requestAnimationFrame(() => {
+      const scroller = document.getElementById('panel-content');
+      if (scroller) {
+        scroller.scrollTo({ top: Math.max(0, target.offsetTop - 8), behavior: 'smooth' });
+      } else {
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
   }
 
   /* ======================================================================
@@ -361,6 +368,8 @@ const RPUi = (() => {
         </div>
       `;
 
+      wireElevationProfile(card, stats);
+
       card.querySelector('[data-action="toggle"]').addEventListener('click', () => onToggleVisibility(def.id));
       card.querySelectorAll('.route-trim-btn').forEach((btn) => {
         btn.addEventListener('click', () => onTrim(def.id, Number(btn.dataset.segment)));
@@ -379,6 +388,60 @@ const RPUi = (() => {
    * fournie par ORS et BRouter quand elevation est demandé). Si l'altitude
    * est indisponible, affiche un message plutôt qu'un graphique vide.
    */
+  function getElevationTrackPoints(stats) {
+    const coords = stats.raw?.geometry?.coordinates;
+    if (!coords || !coords.length || coords[0].length < 3) return [];
+    let cum = 0;
+    return coords.map((c, i) => {
+      if (i > 0) cum += RPUtils.haversineDistance([coords[i - 1][1], coords[i - 1][0]], [c[1], c[0]]);
+      return { dist: cum, ele: Number(c[2]) || 0, lat: c[1], lng: c[0] };
+    });
+  }
+
+  function wireElevationProfile(card, stats) {
+    const svg = card.querySelector('.elevation-profile-svg');
+    const track = getElevationTrackPoints(stats);
+    if (!svg || track.length < 2) return;
+    const total = track[track.length - 1].dist || 1;
+
+    const pointForFraction = (fraction) => {
+      const target = Math.max(0, Math.min(1, fraction)) * total;
+      let lo = 0, hi = track.length - 1;
+      while (lo < hi) {
+        const mid = Math.floor((lo + hi) / 2);
+        if (track[mid].dist < target) lo = mid + 1; else hi = mid;
+      }
+      const i = Math.max(1, lo);
+      const a = track[i - 1], b = track[i];
+      const span = Math.max(1, b.dist - a.dist);
+      const t = Math.max(0, Math.min(1, (target - a.dist) / span));
+      return {
+        lat: a.lat + (b.lat - a.lat) * t,
+        lng: a.lng + (b.lng - a.lng) * t,
+        ele: a.ele + (b.ele - a.ele) * t,
+        dist: target,
+      };
+    };
+
+    const update = (clientX) => {
+      const rect = svg.getBoundingClientRect();
+      if (!rect.width) return;
+      const fraction = (clientX - rect.left) / rect.width;
+      const point = pointForFraction(fraction);
+      RPMap.showProfilePosition([point.lat, point.lng], `${(point.dist / 1000).toFixed(1)} km · ${Math.round(point.ele)} m`);
+    };
+
+    svg.addEventListener('pointerdown', (event) => {
+      event.preventDefault();
+      svg.setPointerCapture?.(event.pointerId);
+      update(event.clientX);
+    });
+    svg.addEventListener('pointermove', (event) => {
+      if (event.pointerType === 'mouse' || svg.hasPointerCapture?.(event.pointerId)) update(event.clientX);
+    });
+    svg.addEventListener('click', (event) => update(event.clientX));
+  }
+
   function buildElevationProfileSvg(stats, colorHex) {
     const coords = stats.raw?.geometry?.coordinates;
     if (!coords || !coords.length || coords[0].length < 3) {
@@ -387,15 +450,7 @@ const RPUi = (() => {
 
     // Distance cumulée + altitude à chaque point, puis sous-échantillonnage
     // pour un tracé SVG léger (~80 points suffisent visuellement).
-    const raw = coords.map((c, i) => {
-      const prev = i > 0 ? coords[i - 1] : c;
-      return { ele: c[2] || 0, lat: c[1], lng: c[0], prevLat: prev[1], prevLng: prev[0] };
-    });
-    let cum = 0;
-    const points = raw.map((p, i) => {
-      if (i > 0) cum += RPUtils.haversineDistance([p.prevLat, p.prevLng], [p.lat, p.lng]);
-      return { dist: cum, ele: p.ele };
-    });
+    const points = getElevationTrackPoints(stats);
 
     const maxPoints = 80;
     const stride = Math.max(1, Math.floor(points.length / maxPoints));

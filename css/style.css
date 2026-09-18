@@ -966,3 +966,45 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
 .leaflet-control-layers label {
   font: 500 13px var(--font-body);
 }
+
+/* v2.8.8 — repères kilométriques + interaction profil altimétrique */
+.tempo-sport-emoji {
+  font-size: .82em;
+  margin-left: 4px;
+  vertical-align: .06em;
+}
+.rp-km-marker {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-surface);
+  border: 3px solid var(--km-color, var(--color-accent));
+  color: var(--color-text);
+  box-shadow: 0 2px 8px rgba(0,0,0,.28);
+  font: 700 10px var(--font-body);
+  box-sizing: border-box;
+}
+.elevation-profile-svg {
+  cursor: crosshair;
+  touch-action: none;
+}
+.elevation-profile::after {
+  content: 'Touchez le profil pour repérer ce point sur la carte';
+  display: block;
+  margin-top: 4px;
+  color: var(--color-text-dim);
+  font-size: 10px;
+}
+.rp-profile-tooltip {
+  border: 0 !important;
+  border-radius: 999px !important;
+  background: #15191d !important;
+  color: #fff !important;
+  box-shadow: 0 3px 12px rgba(0,0,0,.28) !important;
+  font: 600 11px var(--font-body) !important;
+  padding: 4px 8px !important;
+}
+.rp-profile-tooltip::before { display: none !important; }
