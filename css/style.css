@@ -282,7 +282,7 @@ input[type="range"] {
 .waypoint-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   background: var(--color-surface-alt);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
@@ -804,11 +804,11 @@ body.has-protocol-warning .fab { margin-top: 44px; }
 .route-trim-map-btn { display: block; padding: 11px; border: 0; border-radius: 8px; background: #8736bd; color: #fff; font: 600 14px var(--font-body); cursor: pointer; min-height: 44px; }
 
 /* v2.5 — en-tête commun à la suite et panneau continu façon RunPlanner. */
-:root { --topbar-height: 56px; }
+:root { --topbar-height: 50px; }
 #map { top: var(--topbar-height); }
 .tempo-topbar {
   position: fixed; z-index: 1200; top: 0; left: 0; right: 0;
-  height: var(--topbar-height); padding: 0 max(12px, env(safe-area-inset-right, 0px)) 0 max(12px, env(safe-area-inset-left, 0px));
+  height: var(--topbar-height); padding: 0 max(8px, env(safe-area-inset-right, 0px)) 0 max(8px, env(safe-area-inset-left, 0px));
   background: var(--color-surface); border-bottom: 1px solid var(--color-border);
 }
 .tempo-topbar-inner { display: flex; align-items: center; gap: 6px; width: 100%; height: 100%; }
@@ -822,7 +822,7 @@ body.has-protocol-warning .fab { margin-top: 44px; }
 .tempo-topbar .suite-toggle:hover, .tempo-topbar .fab:hover { background: var(--color-surface-alt); }
 .tempo-topbar .suite-menu { position: absolute; top: 100%; left: 0; max-width: calc(100vw - 24px); }
 .tempo-topbar .fab {
-  position: static; z-index: auto; flex: 0 0 35px; width: 35px; height: 35px;
+  position: static; z-index: auto; flex: 0 0 34px; width: 34px; height: 34px;
   border-radius: 999px; box-shadow: none; background: transparent;
   font-size: 18px; line-height: 1;
 }
@@ -855,17 +855,17 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
   border: 0;
   border-radius: 10px;
   box-shadow: none;
-  padding: 4px 4px;
+  padding: 2px 2px;
   background: transparent;
   color: var(--color-text);
   text-align: left;
 }
 .tempo-brand-mark {
   position: relative;
-  flex: 0 0 23px;
-  width: 23px;
-  height: 23px;
-  border: 5px solid #ef8f88;
+  flex: 0 0 19px;
+  width: 19px;
+  height: 19px;
+  border: 4px solid #ef8f88;
   border-right-color: transparent;
   border-radius: 50%;
   transform: rotate(-34deg);
@@ -883,7 +883,7 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
 }
 .tempo-topbar .suite-toggle-brand strong {
   color: #20262c;
-  font: 700 17px var(--font-body);
+  font: 700 15px var(--font-body);
 }
 :root[data-theme='dark'] .tempo-topbar .suite-toggle-brand strong {
   color: #f2f5f7;
@@ -891,7 +891,7 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
 .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span {
   display: block;
   color: var(--color-text-dim);
-  font-size: 9px;
+  font-size: 7px;
   letter-spacing: .12em;
 }
 .tempo-sport-emoji { font-size: 13px; vertical-align: baseline; margin-left: 2px; }
@@ -929,8 +929,9 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
   flex-shrink: 0;
 }
 .leaflet-top.leaflet-right {
-  top: calc(var(--topbar-height) + 6px);
-  right: 10px;
+  /* Le contrôle est déjà DANS la carte, laquelle commence sous le bandeau. */
+  top: 8px;
+  right: 8px;
 }
 .leaflet-control-layers {
   border: 1px solid var(--color-border) !important;
@@ -939,8 +940,8 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
   box-shadow: 0 8px 26px rgba(0,0,0,.15) !important;
 }
 .leaflet-control-layers-toggle {
-  width: 40px !important;
-  height: 40px !important;
+  width: 38px !important;
+  height: 38px !important;
   background-size: 20px 20px !important;
 }
 .leaflet-touch .leaflet-control-layers,

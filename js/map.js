@@ -18,6 +18,7 @@ const RPMap = (() => {
   let pickMode = null; // 'start' | 'end' | 'waypoint' | null
   let onPickCallback = null;
   let profilePositionMarker = null;
+  let mixedRoadsOverlay = null;
 
   function init() {
     map = L.map('map', {
@@ -64,6 +65,16 @@ const RPMap = (() => {
     });
     baseLayerLabels.topo = 'Relief';
 
+    // Calque semi-transparent destiné à être posé sur le satellite, comme
+    // dans RunPlanner : on conserve l'imagerie tout en retrouvant routes,
+    // chemins et repères utiles pour juger un parcours vélo.
+    mixedRoadsOverlay = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors, style &copy; OpenTopoMap',
+      maxNativeZoom: 17,
+      maxZoom: 20,
+      opacity: 0.58,
+    });
+
     baseLayers[currentBaseLayerKey].addTo(map);
 
     layersControl = L.control.layers({
@@ -73,7 +84,22 @@ const RPMap = (() => {
       'Vélo': baseLayers.cyclosm,
       'Relief': baseLayers.topo,
       'Satellite': baseLayers.satellite,
-    }, null, { position: 'topright', collapsed: true }).addTo(map);
+    }, {
+      'Mixte satellite + routes/pistes': mixedRoadsOverlay,
+    }, { position: 'topright', collapsed: true }).addTo(map);
+
+    // Un clic sur le calque mixte bascule automatiquement le fond en
+    // satellite. Le calque reste ensuite décochable indépendamment.
+    map.on('overlayadd', (e) => {
+      if (e.layer !== mixedRoadsOverlay) return;
+      if (currentBaseLayerKey !== 'satellite') {
+        if (baseLayers[currentBaseLayerKey] && map.hasLayer(baseLayers[currentBaseLayerKey])) {
+          map.removeLayer(baseLayers[currentBaseLayerKey]);
+        }
+        baseLayers.satellite.addTo(map);
+        currentBaseLayerKey = 'satellite';
+      }
+    });
 
     map.on('baselayerchange', (e) => {
       const nextKey = Object.keys(baseLayers).find((key) => baseLayers[key] === e.layer);

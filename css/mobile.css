@@ -64,11 +64,11 @@
 
 /* v2.8.6 — mobile topbar closer to RunPlanner */
 @media (max-width: 767px) {
-  :root { --topbar-height: 56px; }
+  :root { --topbar-height: 48px; }
   .tempo-topbar-inner { gap: 6px; }
   .tempo-topbar .suite-toggle-brand { padding-left: 2px; }
-  .tempo-topbar .suite-toggle-brand strong { font-size: 16px; }
-  .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span { font-size: 8px; }
+  .tempo-topbar .suite-toggle-brand strong { font-size: 15px; }
+  .tempo-topbar .suite-toggle-brand .tempo-brand-copy > span { font-size: 6px; }
   .theme-chip {
     min-width: 0;
     width: auto;
@@ -76,11 +76,11 @@
     height: 36px;
     font-size: 13px;
   }
-  .leaflet-top.leaflet-right { top: calc(var(--topbar-height) + 4px); }
+  .leaflet-top.leaflet-right { top: 6px; right: 8px; }
 }
 @media (max-width: 460px) {
   .theme-chip { min-width: 90px; padding: 0 8px; }
-  .tempo-brand-mark { width: 23px; height: 23px; flex-basis: 23px; border-width: 5px; }
+  .tempo-brand-mark { width: 19px; height: 19px; flex-basis: 19px; border-width: 4px; }
   .tempo-topbar .fab { flex-basis: 34px; width: 34px; height: 34px; }
 }
 @media (max-width: 390px) {

@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.9.0';
+  const APP_VERSION = '2.9.1';
 
   const state = {
     start: null,       // { lat, lng, label }
@@ -475,13 +475,14 @@
     document.getElementById('btn-locate').addEventListener('click', async () => {
       try {
         const latlng = await RPMap.locateUser();
-        if (!state.start) {
-          const label = await RPGeocoder.reverseGeocode(latlng);
-          state.start = { lat: latlng[0], lng: latlng[1], label };
-          setFieldValue(document.getElementById('input-start'), label);
-          RPMap.setStartMarker(latlng);
-          syncMarkerDrag('start');
-        }
+        const label = await RPGeocoder.reverseGeocode(latlng);
+        // Le bouton de localisation signifie toujours « utiliser ma position
+        // comme nouveau départ », même si un départ était déjà renseigné.
+        state.start = { lat: latlng[0], lng: latlng[1], label };
+        setFieldValue(document.getElementById('input-start'), label);
+        RPMap.setStartMarker(latlng);
+        syncMarkerDrag('start');
+        RPUtils.toast('Départ remplacé par votre position actuelle.');
       } catch (err) {
         RPUtils.toast('Localisation impossible : ' + err.message, { error: true });
       }
