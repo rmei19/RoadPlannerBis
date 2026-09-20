@@ -564,7 +564,12 @@ const RPMap = (() => {
       profilePositionMarker.unbindTooltip();
       profilePositionMarker.bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -8], className: 'rp-profile-tooltip' }).openTooltip();
     }
-    map.panInside(latlng, { padding: [55, 90], animate: false });
+    const size = map.getSize();
+    map.panInside(latlng, {
+      paddingTopLeft: [42, 28],
+      paddingBottomRight: [42, Math.round(size.y * 0.58)],
+      animate: false,
+    });
   }
 
   function hideProfilePosition() {
