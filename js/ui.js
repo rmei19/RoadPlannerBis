@@ -400,20 +400,9 @@ const RPUi = (() => {
 
   function wireElevationProfile(card, stats) {
     const svg = card.querySelector('.elevation-profile-svg');
-    const indicator = card.querySelector('.elevation-profile-indicator');
-    const cursorLine = card.querySelector('.elevation-profile-cursor-line');
-    const cursorDot = card.querySelector('.elevation-profile-cursor-dot');
     const track = getElevationTrackPoints(stats);
     if (!svg || track.length < 2) return;
     const total = track[track.length - 1].dist || 1;
-    const elevations = track.map((p) => p.ele);
-    const minEle = Math.min(...elevations);
-    const maxEle = Math.max(...elevations);
-    const eleRange = Math.max(1, maxEle - minEle);
-    const vb = svg.viewBox?.baseVal;
-    const viewWidth = vb?.width || 280;
-    const viewHeight = vb?.height || 56;
-    const pad = 2;
 
     const pointForFraction = (fraction) => {
       const target = Math.max(0, Math.min(1, fraction)) * total;
@@ -434,40 +423,11 @@ const RPUi = (() => {
       };
     };
 
-    const renderIndicator = (fraction, point) => {
-      const clamped = Math.max(0, Math.min(1, fraction));
-      const x = pad + clamped * (viewWidth - pad * 2);
-      const y = viewHeight - pad - ((point.ele - minEle) / eleRange) * (viewHeight - pad * 2);
-      if (cursorLine) {
-        cursorLine.setAttribute('x1', x.toFixed(1));
-        cursorLine.setAttribute('x2', x.toFixed(1));
-        cursorLine.style.opacity = '1';
-      }
-      if (cursorDot) {
-        cursorDot.setAttribute('cx', x.toFixed(1));
-        cursorDot.setAttribute('cy', y.toFixed(1));
-        cursorDot.style.opacity = '1';
-      }
-      if (indicator) {
-        indicator.textContent = `${(point.dist / 1000).toFixed(1)} km · ${Math.round(point.ele)} m`;
-        indicator.hidden = false;
-        const pct = Math.max(10, Math.min(90, clamped * 100));
-        indicator.style.left = `${pct}%`;
-      }
-    };
-
-    const hideIndicator = () => {
-      if (cursorLine) cursorLine.style.opacity = '0';
-      if (cursorDot) cursorDot.style.opacity = '0';
-      if (indicator) indicator.hidden = true;
-    };
-
     const update = (clientX) => {
       const rect = svg.getBoundingClientRect();
       if (!rect.width) return;
       const fraction = (clientX - rect.left) / rect.width;
       const point = pointForFraction(fraction);
-      renderIndicator(fraction, point);
       RPMap.showProfilePosition([point.lat, point.lng], `${(point.dist / 1000).toFixed(1)} km · ${Math.round(point.ele)} m`);
     };
 
@@ -479,12 +439,6 @@ const RPUi = (() => {
     svg.addEventListener('pointermove', (event) => {
       if (event.pointerType === 'mouse' || svg.hasPointerCapture?.(event.pointerId)) update(event.clientX);
     });
-    svg.addEventListener('pointerup', () => { /* conserve le repère courant */ });
-    svg.addEventListener('pointerleave', () => {
-      // On masque seulement l'indicateur local ; le repère carte peut rester visible.
-      hideIndicator();
-    });
-    svg.addEventListener('lostpointercapture', hideIndicator);
     svg.addEventListener('click', (event) => update(event.clientX));
   }
 
@@ -522,12 +476,9 @@ const RPUi = (() => {
 
     return `
       <div class="elevation-profile">
-        <div class="elevation-profile-indicator" hidden></div>
         <svg viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" class="elevation-profile-svg">
           <path d="${areaPath}" fill="${colorHex}" opacity="0.18" stroke="none"></path>
           <path d="${linePath}" fill="none" stroke="${colorHex}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"></path>
-          <line class="elevation-profile-cursor-line" x1="0" y1="0" x2="0" y2="${height}" />
-          <circle class="elevation-profile-cursor-dot" cx="0" cy="0" r="3.5" />
         </svg>
         <div class="elevation-profile-labels">
           <span>${Math.round(minEle)} m</span>

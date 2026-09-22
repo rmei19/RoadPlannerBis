@@ -15,7 +15,7 @@
   // avant la virgule (ex. 2.0 -> 3.0) que pour de GROS changements comme ce
   // lot-ci. Petites retouches -> 2.01, 2.02... Changements intermédiaires ->
   // 2.1, 2.11...
-  const APP_VERSION = '2.9.2';
+  const APP_VERSION = '2.9.3';
 
   const state = {
     start: null,       // { lat, lng, label }

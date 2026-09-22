@@ -163,3 +163,10 @@ Les modes Boucle et Boucle aléatoire affichent les points de passage. Ceux-ci s
 
 - En vélo de route, l’itinéraire 2 utilise `fastbike-verylowtraffic` côté BRouter afin de conserver des petites routes calmes tout en pénalisant fortement les surfaces non goudronnées.
 - Si BRouter renvoie une erreur de type `Please, retry later!` après qu’un candidat de boucle acceptable a déjà été trouvé, RoadPlanner conserve désormais ce candidat au lieu de perdre toute la génération.
+
+
+## Modifications 2.9.3
+
+- Fond CARTO « Clair » avec clé API brouillée côté client pour éviter son exposition en clair aux scans simples. Ce brouillage n’est pas une protection cryptographique ; pensez à restreindre la clé au domaine GitHub Pages côté CARTO.
+- Message dans le code à destination des lecteurs humains : « merci de ne pas abuser de cette clé ».
+- Marge renforcée pour le point blanc de suivi du profil : il reste davantage au-dessus du panneau inférieur sur mobile.
