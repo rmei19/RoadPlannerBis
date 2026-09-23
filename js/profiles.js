@@ -28,8 +28,9 @@
  *    aux chemins) + évite grands axes et escaliers, poids "green" maximal.
  *
  * En vélo de route, l'itinéraire 2 utilise côté BRouter le profil
- * fastbike-verylowtraffic : il garde l'objectif petites routes / faible trafic
- * tout en pénalisant fortement les surfaces non goudronnées. ORS conserve
+ * fastbike : le mode Routes secondaires privilégie maintenant d'abord les routes
+ * adaptées au vélo de route et goudronnées ; la tranquillité est obtenue par la géométrie
+ * de boucle plutôt qu'en acceptant des pistes pour éviter le trafic. ORS conserve
  * cycling-road quand il peut être utilisé.
  */
 
@@ -42,7 +43,7 @@ const RPProfiles = (() => {
   const BIKE_TYPE_ENGINE_PROFILES = {
     road: {
       principal: { ors: 'cycling-road', brouter: 'fastbike' },
-      bis: { ors: 'cycling-road', brouter: 'fastbike-verylowtraffic' },
+      bis: { ors: 'cycling-road', brouter: 'fastbike' },
       cyclable: { ors: 'cycling-regular', brouter: 'safety' },
     },
     vtt: {
@@ -85,7 +86,7 @@ const RPProfiles = (() => {
       name: 'Itinéraire 2 — Routes secondaires',
       color: 'var(--color-route-bis)',
       colorHex: '#1E88E5',
-      description: 'Évite explicitement les grands axes, privilégie les petites routes peu fréquentées.',
+      description: 'Privilégie les petites routes goudronnées et évite autant que possible les pistes/chemins non revêtus.',
       buildOptions: (criteria) => {
         const engines = enginesFor(criteria, 'bis');
         return {

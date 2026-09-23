@@ -474,8 +474,34 @@ input[type="range"] {
   margin-top: 2px;
 }
 
-.elevation-profile { margin-bottom: 12px; }
+.elevation-profile { margin-bottom: 12px; position: relative; }
 .elevation-profile-svg { width: 100%; height: 56px; display: block; }
+.elevation-profile-indicator {
+  position: absolute;
+  top: -8px;
+  transform: translate(-50%, -100%);
+  background: #15191d;
+  color: #fff;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font: 600 10px var(--font-body);
+  white-space: nowrap;
+  box-shadow: 0 3px 12px rgba(0,0,0,.22);
+  pointer-events: none;
+  z-index: 2;
+}
+.elevation-profile-cursor-line {
+  stroke: rgba(0,0,0,.38);
+  stroke-width: 1.3;
+  stroke-dasharray: 3 3;
+  opacity: 0;
+}
+.elevation-profile-cursor-dot {
+  fill: #fff;
+  stroke: #111;
+  stroke-width: 2;
+  opacity: 0;
+}
 .elevation-profile-labels {
   display: flex;
   align-items: center;
@@ -982,7 +1008,7 @@ body.has-protocol-warning #map { top: calc(var(--topbar-height) + 44px); }
   touch-action: none;
 }
 .elevation-profile::after {
-  content: 'Touchez le profil pour repérer ce point sur la carte';
+  content: 'Touchez ou faites glisser sur le profil pour repérer ce point sur la carte';
   display: block;
   margin-top: 4px;
   color: var(--color-text-dim);

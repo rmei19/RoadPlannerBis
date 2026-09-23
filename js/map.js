@@ -34,22 +34,7 @@ const RPMap = (() => {
     });
     baseLayerLabels.osm = 'OpenStreetMap';
 
-    // Clé CARTO volontairement brouillée pour éviter qu'elle apparaisse en clair
-    // dans les fouilles automatiques du code source. Ce n'est PAS un chiffrement
-    // de sécurité : le navigateur doit pouvoir la reconstruire côté client.
-    // Humains qui lisez ceci : merci de ne pas abuser de cette clé.
-    const cartoMask = [0x5A, 0x13, 0xC7, 0x2D, 0x91];
-    const cartoKeyBytes = [
-      57, 113, 246, 114, 162, 46, 97, 177, 114, 160,
-      5, 42, 162, 75, 242, 105, 42, 165, 76, 161,
-      59, 35, 255, 26, 247, 107, 113, 255, 21, 168,
-      111, 117, 243, 21, 161,
-    ];
-    const cartoApiKey = cartoKeyBytes
-      .map((value, index) => String.fromCharCode(value ^ cartoMask[index % cartoMask.length]))
-      .join('');
-
-    baseLayers.carto = L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(cartoApiKey)}`, {
+    baseLayers.carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       subdomains: 'abcd',
       maxZoom: 20,
@@ -580,24 +565,9 @@ const RPMap = (() => {
       profilePositionMarker.bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -8], className: 'rp-profile-tooltip' }).openTooltip();
     }
     const size = map.getSize();
-
-    // Garde le point blanc confortablement au-dessus du panneau inférieur.
-    // Le minimum à 64 % de la hauteur visible le maintient dans la partie
-    // haute de la carte ; si le panneau remonte davantage, sa position réelle
-    // est prise en compte avec 52 px de marge supplémentaire.
-    let bottomSafePadding = Math.round(size.y * 0.64);
-    const panel = document.getElementById('panel');
-    if (panel) {
-      const mapRect = map.getContainer().getBoundingClientRect();
-      const panelRect = panel.getBoundingClientRect();
-      const panelOverlap = Math.max(0, mapRect.bottom - panelRect.top);
-      bottomSafePadding = Math.max(bottomSafePadding, Math.round(panelOverlap + 52));
-    }
-    bottomSafePadding = Math.min(bottomSafePadding, Math.max(80, size.y - 72));
-
     map.panInside(latlng, {
-      paddingTopLeft: [42, 36],
-      paddingBottomRight: [42, bottomSafePadding],
+      paddingTopLeft: [42, 28],
+      paddingBottomRight: [42, Math.round(size.y * 0.58)],
       animate: false,
     });
   }
