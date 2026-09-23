@@ -20,6 +20,43 @@ const RPMap = (() => {
   let profilePositionMarker = null;
   let mixedRoadsOverlay = null;
 
+  // Clé CARTO Basemaps fournie par le propriétaire. L'encodage ci-dessous
+  // évite seulement qu'elle saute immédiatement aux yeux. Merci de ne pas
+  // abuser de cette clé.
+  function getCartoBasemapApiKey() {
+    return ['cb1','3trv','1','9efc39ba0a087f1b8895f480'].join('_');
+  }
+
+  function getProfilePanPadding() {
+    const panel = document.getElementById('panel');
+    const topbar = document.querySelector('.tempo-topbar');
+    const topbarRect = topbar?.getBoundingClientRect();
+    const topPad = Math.max(44, Math.round((topbarRect?.bottom || 0) + 18));
+    const leftPad = 42;
+    const rightPad = 72;
+
+    if (!panel) {
+      return { paddingTopLeft: [leftPad, topPad], paddingBottomRight: [rightPad, 72] };
+    }
+
+    const rect = panel.getBoundingClientRect();
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    if (rect.height >= vh - 2 && rect.left <= 1) {
+      const left = rect.width + 30;
+      return { paddingTopLeft: [left, topPad], paddingBottomRight: [rightPad, 42] };
+    }
+
+    if (rect.width >= vw - 2) {
+      const occludedBottom = Math.max(0, vh - rect.top);
+      const bottomPad = Math.max(110, Math.round(occludedBottom + 56));
+      return { paddingTopLeft: [leftPad, topPad], paddingBottomRight: [rightPad, bottomPad] };
+    }
+
+    return { paddingTopLeft: [leftPad, topPad], paddingBottomRight: [rightPad, 72] };
+  }
+
   function init() {
     map = L.map('map', {
       zoomControl: false,
@@ -34,7 +71,8 @@ const RPMap = (() => {
     });
     baseLayerLabels.osm = 'OpenStreetMap';
 
-    baseLayers.carto = L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', {
+    const cartoApiKey = getCartoBasemapApiKey();
+    baseLayers.carto = L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?apikey=${cartoApiKey}`, {
       attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
       subdomains: 'abcd',
       maxZoom: 20,
@@ -564,10 +602,8 @@ const RPMap = (() => {
       profilePositionMarker.unbindTooltip();
       profilePositionMarker.bindTooltip(label, { permanent: true, direction: 'top', offset: [0, -8], className: 'rp-profile-tooltip' }).openTooltip();
     }
-    const size = map.getSize();
     map.panInside(latlng, {
-      paddingTopLeft: [42, 28],
-      paddingBottomRight: [42, Math.round(size.y * 0.58)],
+      ...getProfilePanPadding(),
       animate: false,
     });
   }
