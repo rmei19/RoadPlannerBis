@@ -165,6 +165,11 @@ Les modes Boucle et Boucle aléatoire affichent les points de passage. Ceux-ci s
 - Si BRouter renvoie une erreur de type `Please, retry later!` après qu’un candidat de boucle acceptable a déjà été trouvé, RoadPlanner conserve désormais ce candidat au lieu de perdre toute la génération.
 
 
+## Version 2.9.5 — Navigation Suite Tempo complète
+
+- Le menu du logo Tempo utilise les cinq mêmes destinations que les autres applications.
+- L’entrée Entraînement est correctement nommée et Agenda Maison est désormais accessible depuis RoadPlanner.
+
 ## Version 2.9.4 — Fond clair rétabli et repère mieux visible
 
 Le fond **Clair** CARTO réutilise désormais la clé fournie par le propriétaire, ce qui rétablit le chargement normal des tuiles là où le serveur l'autorise. Le point blanc lié au profil de dénivelé est également maintenu plus loin des bords masqués de la carte, en particulier au-dessus du panneau mobile, pour éviter qu'il ne se recolle en bas de l'écran.
